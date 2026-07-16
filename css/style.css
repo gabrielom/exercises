@@ -100,6 +100,9 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 .gcard:active { transform: scale(0.97); }
 .gcard img { width: 100%; aspect-ratio: 120 / 100; object-fit: contain; }
+/* Generated PNGs bake in a light background — round them off so they read as
+   a tile in both themes (SVG pictograms are transparent and unaffected). */
+img[src^="img/gen/"] { border-radius: 14px; }
 .gcard .g-name { font-size: 13.5px; font-weight: 620; line-height: 1.25; }
 .gcard .g-meta {
   display: flex; align-items: center; gap: 6px;

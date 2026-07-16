@@ -1,6 +1,5 @@
-import { ROUTINE, routineSlots, byId } from './data.js';
+import { ROUTINE, routineSlots, byId, imgFor } from './data.js';
 import * as store from './store.js';
-import { initFigures } from './anim.js';
 import { fmtTime, toast } from './app.js';
 
 const slots = routineSlots();
@@ -167,7 +166,7 @@ function complete() {
 // ————— rendering —————
 
 function sideBadge(side) {
-  return side ? `<span class="p-side">${side}</span>` : '';
+  return side ? `<span class="pl-side">${side}</span>` : '';
 }
 
 function renderOverview() {
@@ -207,18 +206,18 @@ function renderPlayer() {
   const nextEx = next ? byId[next.ex] : null;
   container.innerHTML = `
     <div class="routine-wrap player">
-      <div class="p-block">${slot.block} · ${st.i + 1}/${slots.length}</div>
-      <div class="p-name">${ex.name}${sideBadge(slot.side)}</div>
-      <p class="p-cue">${ex.cue || ''}</p>
-      <div class="p-fig"><canvas data-anim="${ex.anim}" width="260" height="168" aria-hidden="true"></canvas></div>
-      <div class="p-phase ${isHold ? '' : 'rest'}">${isHold ? 'Hold' : 'Rest'}</div>
-      <div class="p-clock" id="pClock">${fmtTime(currentRemaining())}</div>
-      <p class="p-next">${isHold
+      <div class="pl-block">${slot.block} · ${st.i + 1}/${slots.length}</div>
+      <div class="pl-name">${ex.name}${sideBadge(slot.side)}</div>
+      <p class="pl-cue">${ex.cue || ''}</p>
+      <div class="pl-fig"><img src="${imgFor(ex.id)}" alt=""></div>
+      <div class="pl-phase ${isHold ? '' : 'rest'}">${isHold ? 'Hold' : 'Rest'}</div>
+      <div class="pl-clock" id="pClock">${fmtTime(currentRemaining())}</div>
+      <p class="pl-next">${isHold
         ? '&nbsp;'
         : (nextEx ? `Next · <b>${nextEx.name}${next.side ? ' ' + next.side : ''}</b>` : 'Last one — finish strong')}</p>
       <div class="progress"><i id="pBar" style="width:${(elapsedSeconds() / TOTAL) * 100}%"></i></div>
-      <div class="p-meta"><span>${slot.block}</span><span id="pRem">−${fmtLong(TOTAL - elapsedSeconds())}</span></div>
-      <div class="p-controls">
+      <div class="pl-meta"><span>${slot.block}</span><span id="pRem">−${fmtLong(TOTAL - elapsedSeconds())}</span></div>
+      <div class="pl-controls">
         <button class="ctl" data-r="back" aria-label="Previous">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
         </button>
@@ -235,7 +234,6 @@ function renderPlayer() {
         </button>
       </div>
     </div>`;
-  initFigures(container);
 }
 
 function updateClock() {

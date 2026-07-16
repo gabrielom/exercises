@@ -1,6 +1,5 @@
-import { CATS, EXERCISES, byId } from './data.js';
+import { CATS, GYM_GROUPS, EXERCISES, byId, imgFor } from './data.js';
 import * as store from './store.js';
-import { initFigures } from './anim.js';
 import { mountRoutine, leaveRoutine } from './routine.js';
 
 store.init();
@@ -8,28 +7,13 @@ store.init();
 const view = document.getElementById('view');
 const toastEl = document.getElementById('toast');
 
-const state = { tab: 'exercises', cat: 'all' };
-const counters = new Map();           // exId → reps this session
-const timers = new Map();             // exId → { running, startTs, acc }
+const state = { tab: 'exercises', cat: 'all', gymGroup: 'all' };
 
 // ————— helpers —————
 
 export function fmtTime(totalS) {
   const s = Math.max(0, Math.round(totalS));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
-
-function modeFor(ex) {
-  return store.getPref(ex.id).mode || ex.mode;
-}
-
-function timerState(id) {
-  if (!timers.has(id)) timers.set(id, { running: false, startTs: 0, acc: 0 });
-  return timers.get(id);
-}
-
-function timerElapsed(t) {
-  return (t.acc + (t.running ? Date.now() - t.startTs : 0)) / 1000;
 }
 
 let toastTimer = null;
@@ -40,73 +24,256 @@ export function toast(msg) {
   toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
 }
 
-function todayLine(exId) {
-  const sets = store.todayFor(exId);
-  if (!sets.length) return 'Today · —';
-  const reps = sets.filter(s => s.mode === 'reps').reduce((a, s) => a + s.v, 0);
-  const secs = sets.filter(s => s.mode === 'time').reduce((a, s) => a + s.v, 0);
-  let out = `Today · ${sets.length} set${sets.length > 1 ? 's' : ''}`;
-  if (reps) out += ` · ${reps} reps`;
-  if (secs) out += ` · ${fmtTime(secs)}`;
-  return out;
+export function chime(pattern) {
+  try {
+    chime.ctx = chime.ctx || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = chime.ctx;
+    if (ctx.state === 'suspended') ctx.resume();
+    let t = ctx.currentTime + 0.02;
+    for (const [freq, dur] of pattern) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t); osc.stop(t + dur + 0.02);
+      t += dur + 0.12;
+    }
+  } catch { /* audio unavailable */ }
 }
 
-const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>';
-const PAUSE_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>';
+function modeFor(ex) { return store.getPref(ex.id).mode || ex.mode; }
+function doneToday(exId) { return store.todayFor(exId).length > 0; }
 
-// ————— exercises view —————
+// ————— exercises grid —————
 
-function cardHTML(ex) {
+function filteredList() {
+  let list = EXERCISES.filter(e => state.cat === 'all' || e.cat === state.cat);
+  if (state.cat === 'gym' && state.gymGroup !== 'all') {
+    list = list.filter(e => e.group === state.gymGroup);
+  }
+  return list;
+}
+
+function gcardHTML(ex) {
   const mode = modeFor(ex);
-  const t = timerState(ex.id);
-  const count = counters.get(ex.id) || 0;
-  const perSide = ex.side ? ' · per side' : '';
-  const counter = mode === 'reps'
-    ? `<div class="counter">
-         <button class="tap" data-act="plus" aria-label="Count one rep"><span class="num">${count}</span><small>tap +1</small></button>
-         <div class="mini">
-           <button data-act="minus" aria-label="Minus one">−</button>
-           <button data-act="zero" aria-label="Reset counter">↺</button>
-         </div>
-       </div>
-       <div class="goal">Goal ${ex.target} reps${perSide}</div>`
-    : `<div class="counter">
-         <div class="timerbox">
-           <span class="time" data-time-ex="${ex.id}">${fmtTime(timerElapsed(t))}</span>
-           <button class="playbtn" data-act="play" aria-label="Start or pause timer">${t.running ? PAUSE_SVG : PLAY_SVG}</button>
-           <div class="mini"><button data-act="zero" aria-label="Reset timer">↺</button></div>
-         </div>
-       </div>
-       <div class="goal">Goal ${fmtTime(ex.target)}${perSide}</div>`;
-
-  return `<article class="card" data-ex="${ex.id}">
-    <div class="fig-wrap"><canvas data-anim="${ex.anim}" width="260" height="168" aria-hidden="true"></canvas></div>
-    <div class="card-head"><h3>${ex.name}</h3><span class="cat-tag">${CATS[ex.cat]}</span></div>
-    <p class="cue">${ex.cue || ''}</p>
-    <div class="seg" role="group" aria-label="Counting mode">
-      <button data-act="mode" data-mode="reps" class="${mode === 'reps' ? 'on' : ''}">Reps</button>
-      <button data-act="mode" data-mode="time" class="${mode === 'time' ? 'on' : ''}">Timer</button>
-    </div>
-    ${counter}
-    <div class="meta">
-      <span class="today">${todayLine(ex.id)}</span>
-      <button class="logbtn" data-act="log">Log set</button>
-    </div>
-  </article>`;
+  const bits = [];
+  if (ex.weight) bits.push(`<span class="kg">${ex.weight} kg</span>`);
+  bits.push(`<span>${mode === 'time' ? `⏱ ${fmtTime(ex.target)}` : `${ex.target} reps`}${ex.side ? ' · per side' : ''}</span>`);
+  if (doneToday(ex.id)) bits.push('<span class="done">✓</span>');
+  return `<button class="gcard" data-ex="${ex.id}">
+    <img src="${imgFor(ex.id)}" alt="" loading="lazy">
+    <span class="g-name">${ex.name}</span>
+    <span class="g-meta">${bits.join('')}</span>
+  </button>`;
 }
 
 function renderExercises() {
   const chips = [['all', 'All'], ...Object.entries(CATS)]
     .map(([id, label]) => `<button class="chip ${state.cat === id ? 'on' : ''}" data-cat="${id}">${label}</button>`)
     .join('');
-  const list = EXERCISES.filter(e => state.cat === 'all' || e.cat === state.cat);
-  view.innerHTML = `
-    <div class="chips">${chips}</div>
-    <div class="masonry">${list.map(cardHTML).join('')}</div>`;
-  initFigures(view);
+  const subchips = state.cat === 'gym'
+    ? `<div class="chips sub">${[['all', 'All groups'], ...Object.entries(GYM_GROUPS)]
+        .map(([id, label]) => `<button class="chip ${state.gymGroup === id ? 'on' : ''}" data-group="${id}">${label}</button>`).join('')}</div>`
+    : '';
+
+  const list = filteredList();
+  let cells = '';
+  let lastGroup = null;
+  for (const ex of list) {
+    if (state.cat === 'gym' && state.gymGroup === 'all' && ex.group !== lastGroup) {
+      lastGroup = ex.group;
+      cells += `<div class="group-head">${GYM_GROUPS[ex.group]}</div>`;
+    }
+    cells += gcardHTML(ex);
+  }
+  view.innerHTML = `<div class="chips">${chips}</div>${subchips}<div class="grid">${cells}</div>`;
 }
 
-// ————— history view —————
+// ————— fullscreen player —————
+
+const player = { open: false, list: [], idx: 0, reps: 0, timer: null, interval: null };
+
+function playerEl() { return document.getElementById('player'); }
+
+function currentEx() { return byId[player.list[player.idx]]; }
+
+function stopTimer() {
+  clearInterval(player.interval);
+  player.interval = null;
+  player.timer = null;
+}
+
+function startTimer(seconds) {
+  stopTimer();
+  player.timer = { endAt: Date.now() + seconds * 1000, remaining: seconds, running: true };
+  player.interval = setInterval(playerTick, 250);
+  navigator.wakeLock?.request('screen').then(wl => { player.wl = wl; }).catch(() => {});
+}
+
+function playerTick() {
+  const t = player.timer;
+  if (!t || !t.running) return;
+  t.remaining = (t.endAt - Date.now()) / 1000;
+  const el = playerEl().querySelector('#pTime');
+  if (el) el.textContent = fmtTime(Math.ceil(Math.max(0, t.remaining)));
+  if (t.remaining <= 0) {
+    stopTimer();
+    chime([[660, 0.14], [880, 0.2]]);
+    navigator.vibrate?.([70, 60, 70]);
+    logCurrent(currentEx().target);
+    advance();
+  }
+}
+
+function toggleTimerPause() {
+  const t = player.timer;
+  if (!t) { startTimer(currentEx().target); return; }
+  if (t.running) {
+    t.running = false;
+    t.remaining = Math.max(0, (t.endAt - Date.now()) / 1000);
+  } else {
+    t.endAt = Date.now() + t.remaining * 1000;
+    t.running = true;
+  }
+  playerEl().querySelector('#pTime')?.classList.toggle('paused', !t.running);
+}
+
+function logCurrent(value) {
+  const ex = currentEx();
+  const mode = modeFor(ex);
+  const entry = { ex: ex.id, mode, v: value };
+  if (ex.weight) entry.w = ex.weight;
+  store.logSet(entry);
+  if (mode === 'reps') store.setPref(ex.id, { reps: value });
+}
+
+function advance() {
+  if (player.idx >= player.list.length - 1) return renderPlayerDone();
+  player.idx += 1;
+  renderPlayer(true);
+}
+
+function openPlayer(list, idx) {
+  player.open = true;
+  player.list = list;
+  player.idx = idx;
+  playerEl().hidden = false;
+  document.body.style.overflow = 'hidden';
+  renderPlayer(false);
+}
+
+function closePlayer() {
+  player.open = false;
+  stopTimer();
+  player.wl?.release?.().catch(() => {});
+  playerEl().hidden = true;
+  document.body.style.overflow = '';
+  if (state.tab === 'exercises') renderExercises(); // refresh ✓ badges
+}
+
+function renderPlayerDone() {
+  stopTimer();
+  const done = player.list.filter(id => doneToday(id)).length;
+  playerEl().innerHTML = `
+    <div class="p-top">
+      <button class="iconbtn" data-p="close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <span class="p-count"></span><span style="width:34px"></span>
+    </div>
+    <div class="p-body p-done-screen">
+      <h2>Done.</h2>
+      <p>${done}/${player.list.length} exercises logged today. 💪</p>
+      <button class="donebtn" data-p="close">Back to the list</button>
+    </div>`;
+  chime([[660, 0.15], [880, 0.15], [1100, 0.3]]);
+  navigator.vibrate?.([80, 80, 160]);
+}
+
+function renderPlayer(slide) {
+  const ex = currentEx();
+  const mode = modeFor(ex);
+  const next = byId[player.list[player.idx + 1]];
+  const savedReps = store.getPref(ex.id).reps;
+  player.reps = savedReps || ex.target;
+  stopTimer();
+
+  const counter = mode === 'reps'
+    ? `<div class="stepper">
+         <button data-p="minus" aria-label="Fewer reps">−</button>
+         <div class="val"><b id="pReps">${player.reps}</b><span>reps${ex.side ? ' · per side' : ''}</span></div>
+         <button data-p="plus" aria-label="More reps">+</button>
+       </div>`
+    : `<button class="p-clock" data-p="pausetime" aria-label="Pause or resume">
+         <b id="pTime">${fmtTime(ex.target)}</b><span>tap to pause${ex.side ? ' · per side' : ''}</span>
+       </button>`;
+
+  playerEl().innerHTML = `
+    <div class="p-top">
+      <button class="iconbtn" data-p="close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <span class="p-count">${player.idx + 1} / ${player.list.length}</span>
+      <button class="iconbtn" data-p="prev" aria-label="Previous" ${player.idx === 0 ? 'style="visibility:hidden"' : ''}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+    </div>
+    <div class="p-body ${slide ? 'slide' : ''}">
+      <div class="p-img"><img src="${imgFor(ex.id)}" alt=""></div>
+      <div class="p-name">${ex.name}</div>
+      ${ex.pt ? `<div class="p-pt">${ex.pt}</div>` : ''}
+      ${ex.cue ? `<p class="p-cue">${ex.cue}</p>` : ''}
+      <div class="p-badges">
+        ${ex.weight ? `<span class="kg">${ex.weight} kg</span>` : ''}
+        ${ex.side ? `<span class="bside">per side</span>` : ''}
+      </div>
+      <div class="seg" role="group" aria-label="Counting mode">
+        <button data-p="mode" data-mode="reps" class="${mode === 'reps' ? 'on' : ''}">Reps</button>
+        <button data-p="mode" data-mode="time" class="${mode === 'time' ? 'on' : ''}">Timer</button>
+      </div>
+      ${counter}
+    </div>
+    <button class="donebtn" data-p="done">Done${mode === 'reps' ? '' : ' early'}</button>
+    <p class="p-nextline">${next ? `Next · <b>${next.name}</b>` : 'Last one'}</p>`;
+
+  if (mode === 'time') startTimer(ex.target); // timers start automatically
+}
+
+// player events (delegated on the overlay)
+document.getElementById('player').addEventListener('click', e => {
+  const btn = e.target.closest('[data-p]');
+  if (!btn) return;
+  const act = btn.dataset.p;
+  const ex = currentEx();
+  if (act === 'close') closePlayer();
+  else if (act === 'prev') { if (player.idx > 0) { player.idx -= 1; renderPlayer(true); } }
+  else if (act === 'plus' || act === 'minus') {
+    player.reps = Math.max(1, Math.min(99, player.reps + (act === 'plus' ? 1 : -1)));
+    playerEl().querySelector('#pReps').textContent = player.reps;
+    navigator.vibrate?.(8);
+  }
+  else if (act === 'pausetime') toggleTimerPause();
+  else if (act === 'mode') { store.setPref(ex.id, { mode: btn.dataset.mode }); renderPlayer(false); }
+  else if (act === 'done') {
+    const mode = modeFor(ex);
+    if (mode === 'reps') {
+      logCurrent(player.reps);
+    } else {
+      const elapsed = Math.round(ex.target - (player.timer ? Math.max(0, player.timer.remaining) : 0));
+      stopTimer();
+      logCurrent(Math.max(1, elapsed));
+    }
+    navigator.vibrate?.(30);
+    toast(`Logged · ${ex.name}`);
+    advance();
+  }
+});
+
+// ————— history —————
 
 function dayLabel(d) {
   const today = store.localDate();
@@ -121,16 +288,17 @@ function renderHistory() {
   const log = store.getLog();
   let body;
   if (!log.length) {
-    body = `<div class="empty">No sets logged yet.<br>Tap <b>Log set</b> on any card, or run the Corpo routine.</div>`;
+    body = `<div class="empty">No sets logged yet.<br>Open any exercise and tap <b>Done</b>, or run the Corpo routine.</div>`;
   } else {
     const byDay = new Map();
     for (const e of log) {
       if (!byDay.has(e.d)) byDay.set(e.d, new Map());
       const dayMap = byDay.get(e.d);
-      if (!dayMap.has(e.ex)) dayMap.set(e.ex, { sets: 0, reps: 0, secs: 0 });
+      if (!dayMap.has(e.ex)) dayMap.set(e.ex, { sets: 0, reps: 0, secs: 0, w: 0 });
       const agg = dayMap.get(e.ex);
       agg.sets += 1;
       if (e.mode === 'reps') agg.reps += e.v; else agg.secs += e.v;
+      if (e.w) agg.w = Math.max(agg.w, e.w);
     }
     const days = [...byDay.keys()].sort().reverse();
     const weekAgo = store.localDate(Date.now() - 6 * 86400000);
@@ -147,7 +315,7 @@ function renderHistory() {
             ${[...byDay.get(d)].map(([exId, a]) => `
               <div class="h-row">
                 <span>${byId[exId]?.name || exId}</span>
-                <span class="h-val">${a.sets}×${a.reps ? ` · ${a.reps} reps` : ''}${a.secs ? ` · ${fmtTime(a.secs)}` : ''}</span>
+                <span class="h-val">${a.sets}×${a.reps ? ` · ${a.reps} reps` : ''}${a.secs ? ` · ${fmtTime(a.secs)}` : ''}${a.w ? ` · ${a.w} kg` : ''}</span>
               </div>`).join('')}
           </div>
         </section>`).join('')}`;
@@ -173,37 +341,6 @@ function render() {
   else mountRoutine(view);
 }
 
-// ————— targeted card updates (avoid full re-render on every tap) —————
-
-function updateCard(exId) {
-  const card = view.querySelector(`.card[data-ex="${exId}"]`);
-  if (!card) return;
-  const num = card.querySelector('.num');
-  if (num) num.textContent = counters.get(exId) || 0;
-  const t = timers.get(exId);
-  const time = card.querySelector('.time');
-  if (time && t) {
-    time.textContent = fmtTime(timerElapsed(t));
-    const ex = byId[exId];
-    time.classList.toggle('over', modeFor(ex) === 'time' && timerElapsed(t) >= ex.target);
-    card.querySelector('.playbtn').innerHTML = t.running ? PAUSE_SVG : PLAY_SVG;
-  }
-  card.querySelector('.today').textContent = todayLine(exId);
-}
-
-// running timers tick
-setInterval(() => {
-  for (const [id, t] of timers) {
-    if (!t.running) continue;
-    const el = view.querySelector(`[data-time-ex="${id}"]`);
-    if (el) {
-      el.textContent = fmtTime(timerElapsed(t));
-      const ex = byId[id];
-      if (timerElapsed(t) >= ex.target) el.classList.add('over');
-    }
-  }
-}, 500);
-
 // ————— events —————
 
 document.querySelector('.tabbar').addEventListener('click', e => {
@@ -215,59 +352,23 @@ document.querySelector('.tabbar').addEventListener('click', e => {
 
 view.addEventListener('click', e => {
   const chip = e.target.closest('.chip');
-  if (chip) { state.cat = chip.dataset.cat; renderExercises(); return; }
-
+  if (chip) {
+    if (chip.dataset.cat) { state.cat = chip.dataset.cat; state.gymGroup = 'all'; }
+    else if (chip.dataset.group) state.gymGroup = chip.dataset.group;
+    renderExercises();
+    return;
+  }
+  const card = e.target.closest('.gcard[data-ex]');
+  if (card) {
+    const list = filteredList().map(x => x.id);
+    openPlayer(list, list.indexOf(card.dataset.ex));
+    return;
+  }
   const actBtn = e.target.closest('button[data-act]');
   if (!actBtn) return;
-  const act = actBtn.dataset.act;
-
-  // history data actions
-  if (act === 'export') return doExport();
-  if (act === 'import') return view.querySelector('#importFile').click();
-  if (act === 'reset') return doReset();
-
-  const card = actBtn.closest('.card[data-ex]');
-  if (!card) return;
-  const exId = card.dataset.ex;
-  const ex = byId[exId];
-
-  if (act === 'plus') {
-    counters.set(exId, (counters.get(exId) || 0) + 1);
-    navigator.vibrate?.(10);
-    updateCard(exId);
-  } else if (act === 'minus') {
-    counters.set(exId, Math.max(0, (counters.get(exId) || 0) - 1));
-    updateCard(exId);
-  } else if (act === 'zero') {
-    counters.set(exId, 0);
-    timers.set(exId, { running: false, startTs: 0, acc: 0 });
-    updateCard(exId);
-  } else if (act === 'play') {
-    const t = timerState(exId);
-    if (t.running) { t.acc += Date.now() - t.startTs; t.running = false; }
-    else { t.startTs = Date.now(); t.running = true; }
-    updateCard(exId);
-  } else if (act === 'mode') {
-    store.setPref(exId, { mode: actBtn.dataset.mode });
-    renderExercises();
-  } else if (act === 'log') {
-    const mode = modeFor(ex);
-    let v;
-    if (mode === 'reps') {
-      v = counters.get(exId) || 0;
-      if (!v) return toast('Tap a few reps first');
-      counters.set(exId, 0);
-    } else {
-      const t = timerState(exId);
-      v = Math.round(timerElapsed(t));
-      if (!v) return toast('Start the timer first');
-      timers.set(exId, { running: false, startTs: 0, acc: 0 });
-    }
-    store.logSet({ ex: exId, mode, v });
-    navigator.vibrate?.(25);
-    toast(`Logged · ${ex.name} · ${mode === 'reps' ? v + ' reps' : fmtTime(v)}`);
-    updateCard(exId);
-  }
+  if (actBtn.dataset.act === 'export') doExport();
+  else if (actBtn.dataset.act === 'import') view.querySelector('#importFile').click();
+  else if (actBtn.dataset.act === 'reset') doReset();
 });
 
 view.addEventListener('change', e => {
@@ -294,8 +395,6 @@ function doExport() {
 function doReset() {
   if (!confirm('Delete all logged sets and preferences on this device?')) return;
   store.resetAll();
-  counters.clear();
-  timers.clear();
   toast('Data reset');
   render();
 }
@@ -314,7 +413,6 @@ document.getElementById('themeBtn').addEventListener('click', () => {
   store.set('settings', s);
   applyTheme();
   toast(`Theme: ${s.theme}`);
-  render(); // re-create figures with new palette
 });
 
 // ————— boot —————

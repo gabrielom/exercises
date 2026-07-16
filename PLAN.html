@@ -52,16 +52,17 @@
   <h2>Vision</h2>
   <p>One small, fast, installable web app for daily physical practice. Four sections —
   <span class="pill">Gym</span><span class="pill">Stretching</span><span class="pill">Push-ups</span><span class="pill">Pull-ups</span> —
-  presented as a Pinterest-style wall of cards. Every exercise has its own animated figure,
-  a rep counter or a stopwatch (toggleable per exercise), and one-tap set logging.
+  presented as a compact grid of cards. Every exercise has its own generated pictogram figure,
+  a fullscreen player with rep selection or auto-starting timers (toggleable per exercise), and one-tap logging that flows to the next exercise by itself.
   Everything lives in <code>localStorage</code> on your device: no accounts, no servers, works offline.</p>
 
   <h2>The app</h2>
   <ul>
-    <li><b>Cards.</b> A fixed, pre-built catalog of 70 exercises. Each card: animated figure (Zdog, ~29&nbsp;KB, vendored), form cue, reps ⇄ timer toggle, big tap counter or stopwatch, <i>Log set</i>, and today’s totals.</li>
+    <li><b>Grid.</b> A fixed catalog of 121 exercises as a compact 2-column grid (more columns on wider screens), filtered by section chips — Gym adds sub-groups matching the real training program: <i>Série A · Série B · Nova Treino 1 · Nova Treino 2</i>, each exercise with its working weight.</li>
+    <li><b>Fullscreen player.</b> Tap any exercise → it takes the whole screen. Pick the reps with a stepper (remembered per exercise) and hit <b>Done</b> — the set is logged (reps × weight) and the next exercise slides in automatically. Timer exercises start counting down on entry, chime at zero, log themselves and advance. A reps ⇄ timer toggle lives inside the player.</li>
     <li><b>Corpo routine.</b> A guided 2-hour stretching &amp; mobility session (details below) with auto-advancing hold/rest timers, chimes, vibration, wake-lock and resume-after-interruption.</li>
-    <li><b>History.</b> Sets grouped by day with weekly totals. JSON export / import as backup.</li>
-    <li><b>PWA.</b> Add to home screen → opens standalone, fully offline via a cache-first service worker.</li>
+    <li><b>History.</b> Sets grouped by day with weekly totals and weights. JSON export / import as backup.</li>
+    <li><b>PWA.</b> Add to home screen → opens standalone, fully offline via a cache-first service worker (all 121 figures precached — ~0.5&nbsp;MB).</li>
   </ul>
 
   <h2>The Corpo routine</h2>
@@ -97,7 +98,7 @@
   <h2>Data</h2>
   <p>All keys are namespaced (<code>exercises.*</code>) because every <code>*.github.io</code> site shares one localStorage origin.</p>
   <ul>
-    <li><code>exercises.log</code> — append-only set entries <code>{t, d, ex, mode, v, side?, routine?}</code></li>
+    <li><code>exercises.log</code> — append-only set entries <code>{t, d, ex, mode, v, w?, side?, routine?}</code></li>
     <li><code>exercises.prefs</code> — per-exercise mode overrides</li>
     <li><code>exercises.routine</code> — resume state for the Corpo player</li>
     <li><code>exercises.settings</code>, <code>exercises.v</code> — theme &amp; schema version</li>
@@ -108,7 +109,7 @@
   <h2>Tech</h2>
   <ul>
     <li>Static vanilla ES modules — no framework, no build step. GitHub Pages serves it as-is.</li>
-    <li><a href="https://zzz.dog">Zdog</a> pseudo-3D figures: one parameterized rig + a keyframe pose per exercise; animation runs only for visible cards and freezes under <code>prefers-reduced-motion</code>.</li>
+    <li>Every figure is a generated SVG pictogram: a 2D skeleton renderer with forward kinematics + equipment line-work (benches, bars, cables, machines) lives in <code>tools/genfigs.mjs</code>, and each exercise has a hand-specified pose in <code>tools/poses.mjs</code>. Run <code>node tools/genfigs.mjs</code> to regenerate all 121 — no external image licenses, one consistent style.</li>
     <li>Cache-first service worker with a versioned shell — bump <code>VERSION</code> in <code>sw.js</code> to ship updates.</li>
   </ul>
 

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exercises — Plan</title>
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg:#f7f6f3; --card:#fff; --ink:#1a1918; --muted:#8b8780;
+    --line:#e6e3dc; --accent:#e8642c; --soft:#fdeee6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141312; --card:#1e1d1b; --ink:#f1efe9; --muted:#918d85; --line:#2d2b27; --accent:#ff7a45; --soft:#33241c; }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--bg); color:var(--ink);
+    font:15.5px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding:40px 20px 80px;
+  }
+  main { max-width:720px; margin:0 auto; }
+  h1 { font-size:34px; letter-spacing:-0.03em; }
+  h1 .dot { color:var(--accent); }
+  .sub { color:var(--muted); margin:6px 0 34px; }
+  h2 { font-size:20px; letter-spacing:-0.02em; margin:38px 0 10px; }
+  h2::before { content:"— "; color:var(--accent); }
+  p { margin:8px 0; }
+  ul { margin:8px 0 8px 20px; }
+  li { margin:4px 0; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .muted { color:var(--muted); font-size:13.5px; }
+  .pill { display:inline-block; background:var(--soft); color:var(--accent); font-weight:650; font-size:12.5px; border-radius:999px; padding:2px 11px; margin:2px 3px 2px 0; }
+  .tablewrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; font-size:14px; }
+  th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); font-weight:700; padding:8px 10px; border-bottom:1px solid var(--line); }
+  td { padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  td.n { white-space:nowrap; font-variant-numeric:tabular-nums; color:var(--muted); }
+  td b { font-weight:650; }
+  .src { color:var(--muted); font-size:12px; margin-top:4px; }
+  code { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:13px; }
+  .kbd { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:10px 0; }
+  footer { margin-top:56px; color:var(--muted); font-size:12.5px; border-top:1px solid var(--line); padding-top:16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Exercises<span class="dot">.</span></h1>
+  <p class="sub">Project plan — a minimalist exercise PWA, hosted on GitHub Pages.</p>
+
+  <h2>Vision</h2>
+  <p>One small, fast, installable web app for daily physical practice. Four sections —
+  <span class="pill">Gym</span><span class="pill">Stretching</span><span class="pill">Push-ups</span><span class="pill">Pull-ups</span> —
+  presented as a Pinterest-style wall of cards. Every exercise has its own animated figure,
+  a rep counter or a stopwatch (toggleable per exercise), and one-tap set logging.
+  Everything lives in <code>localStorage</code> on your device: no accounts, no servers, works offline.</p>
+
+  <h2>The app</h2>
+  <ul>
+    <li><b>Cards.</b> A fixed, pre-built catalog of 70 exercises. Each card: animated figure (Zdog, ~29&nbsp;KB, vendored), form cue, reps ⇄ timer toggle, big tap counter or stopwatch, <i>Log set</i>, and today’s totals.</li>
+    <li><b>Corpo routine.</b> A guided 2-hour stretching &amp; mobility session (details below) with auto-advancing hold/rest timers, chimes, vibration, wake-lock and resume-after-interruption.</li>
+    <li><b>History.</b> Sets grouped by day with weekly totals. JSON export / import as backup.</li>
+    <li><b>PWA.</b> Add to home screen → opens standalone, fully offline via a cache-first service worker.</li>
+  </ul>
+
+  <h2>The Corpo routine</h2>
+  <p>Built from the <b>“Corpo”</b> playlist (<a href="https://youtube.com/playlist?list=PLrO-qJFePZuxuVqK3V3O8IFQKQl_fYzsu">@gabriel_om</a>, 90 videos, read July 2026),
+  filtered to its stretching &amp; mobility content and focused on three goals:
+  <b>front split (espacate)</b>, <b>pancake opening</b>, and <b>feet / ballet work</b>.</p>
+  <p><b>Format:</b> 80 slots × (60&nbsp;s hold + 30&nbsp;s rest) = <b>exactly 2 hours</b>. Bilateral stretches take one slot per side.</p>
+
+  <div class="tablewrap">
+  <table>
+    <tr><th>Block</th><th>Slots</th><th>Stretches (×2 = per side)</th></tr>
+    <tr><td><b>Warm-up</b><div class="src">Calisthenicmovement · SDC warm-up</div></td><td class="n">8</td>
+        <td>Neck Rolls · Cat–Cow · Thoracic Rotation ×2 · Hip CARs ×2 · Deep Squat Hold · Down Dog → Walk</td></tr>
+    <tr><td><b>Feet &amp; Ankles</b><div class="src">PsycheTruth foot work · Alivia D’Andrea arch · YOGABODY &amp; Barefoot Strength ankle · Ballet OnLine half-pointe</div></td><td class="n">13</td>
+        <td>Ankle Circles ×2 · Knee-over-toe Rocks ×2 · Wall Calf ×2 · Soleus ×2 · Foot Doming · Point &amp; Flex · Relevé Holds · Kneeling Toe Stretch · Arch &amp; Pointe Stretch</td></tr>
+    <tr><td><b>Psoas &amp; Hip Flexors</b><div class="src">Precision Movement · Neal Hallinan · Conor Harris · Your Wellness Nerd</div></td><td class="n">10</td>
+        <td>Psoas March · Low Lunge ×2 · Couch Stretch ×2 · Lizard ×2 · Constructive Rest · Standing Hip Extension ×2</td></tr>
+    <tr><td><b>Hamstrings</b><div class="src">Cathy Madeo · Strength Side · Barefoot Strength · Julyanna Werneck</div></td><td class="n">10</td>
+        <td>Elephant Walks · Forward Fold · Single-leg Hamstring ×2 · Hinge Fold · Half Split ×2 · Hurdler ×2 · Slow Rolldown</td></tr>
+    <tr><td><b>Front Split · Espacate</b><div class="src">jumorosi espacate tutorials · blogilates · Boho Beautiful · PsycheTruth</div></td><td class="n">12</td>
+        <td>Lunge Pulses ×2 · Lunge ⇄ Half-split Flow ×2 · Pigeon ×2 · Standing Quad ×2 · Front Split ×2 · Split PNF Press ×2</td></tr>
+    <tr><td><b>Pancake &amp; Middle Split</b><div class="src">Strength Side pancake · Geek Climber · MOVEBLOCKS · Alivia D’Andrea middle split</div></td><td class="n">14</td>
+        <td>Butterfly · 90/90 ×2 · Frog Rocks · Frog Hold · Horse Stance · Straddle Side Reach ×2 · Straddle Center · Pancake Fold · Cossack ×2 · Wall Straddle · Wide-leg Fold</td></tr>
+    <tr><td><b>Back &amp; Spine</b><div class="src">Alivia D’Andrea back · Lazy Dancer Tips</div></td><td class="n">8</td>
+        <td>Sphinx → Cobra · Puppy Pose · Chest Opener · Child’s Side Reach ×2 · Supine Twist ×2 · Bridge Hold</td></tr>
+    <tr><td><b>Glutes &amp; Finish</b><div class="src">Strength Side · Barefoot Strength glute science</div></td><td class="n">5</td>
+        <td>Figure-4 ×2 · Glute Bridge · Hip Airplane ×2</td></tr>
+  </table>
+  </div>
+  <p class="muted">Every completed hold is logged to History automatically. The routine definition lives in one file
+  (<code>js/data.js</code>), so re-deriving it from an updated playlist is a single-file change.</p>
+
+  <h2>Data</h2>
+  <p>All keys are namespaced (<code>exercises.*</code>) because every <code>*.github.io</code> site shares one localStorage origin.</p>
+  <ul>
+    <li><code>exercises.log</code> — append-only set entries <code>{t, d, ex, mode, v, side?, routine?}</code></li>
+    <li><code>exercises.prefs</code> — per-exercise mode overrides</li>
+    <li><code>exercises.routine</code> — resume state for the Corpo player</li>
+    <li><code>exercises.settings</code>, <code>exercises.v</code> — theme &amp; schema version</li>
+  </ul>
+  <p class="muted">The JSON export is the future sync contract — a companion watch app that counts reps
+  on the fly can produce the same entry shape and merge on import.</p>
+
+  <h2>Tech</h2>
+  <ul>
+    <li>Static vanilla ES modules — no framework, no build step. GitHub Pages serves it as-is.</li>
+    <li><a href="https://zzz.dog">Zdog</a> pseudo-3D figures: one parameterized rig + a keyframe pose per exercise; animation runs only for visible cards and freezes under <code>prefers-reduced-motion</code>.</li>
+    <li>Cache-first service worker with a versioned shell — bump <code>VERSION</code> in <code>sw.js</code> to ship updates.</li>
+  </ul>
+
+  <h2>Roadmap</h2>
+  <ul>
+    <li><b>Watch companion</b> — count reps automatically (motion sensors), log into the same JSON schema, sync via export/import or Web Share.</li>
+    <li>Playlist re-sync — regenerate the Stretching catalog when “Corpo” changes.</li>
+    <li>Streaks &amp; simple charts in History.</li>
+    <li>Configurable hold/rest durations per block.</li>
+  </ul>
+
+  <footer>Exercises — planned &amp; built July 2026 · <a href="./">open the app</a></footer>
+</main>
+</body>
+</html>

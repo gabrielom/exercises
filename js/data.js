@@ -174,7 +174,7 @@ export const byId = Object.fromEntries(EXERCISES.map(e => [e.id, e]));
 
 // Generated illustration when one exists (see tools/genimages.mjs), otherwise
 // the procedural SVG pictogram.
-export const imgFor = id => GENERATED.has(id) ? `img/gen/${id}.png` : `img/${id}.svg`;
+export const imgFor = id => GENERATED[id] ? `img/gen/${id}.${GENERATED[id]}` : `img/${id}.svg`;
 
 // ————————————————————————————————————————————————————————————————
 // The Corpo routine — built from the "Corpo" playlist (@gabriel_om).

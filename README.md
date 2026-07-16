@@ -27,8 +27,16 @@ GEMINI_API_KEY=AIza... node tools/genimages.mjs                  # the rest matc
 
 Results land in `img/gen/<id>.png` and are picked up automatically
 (`js/gen-manifest.js` tracks which exercises have generated art; everything
-else keeps its SVG). Delete a PNG and rerun to redo it; `--force` regenerates.
-Commit the PNGs and bump `VERSION` in `sw.js` to deploy.
+else keeps its SVG). Delete an image and rerun to redo it; `--force`
+regenerates. Then shrink them ~10× (768px WebP, needs Playwright) and refresh
+the manifest:
+
+```
+node tools/optimize.mjs
+node tools/genimages.mjs        # no-op generation; rewrites the manifest
+```
+
+Commit `img/gen/` + the manifest and bump `VERSION` in `sw.js` to deploy.
 
 ## Develop
 

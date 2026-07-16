@@ -24,7 +24,7 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const OUT = join(ROOT, 'img', 'gen');
 const MANIFEST = join(ROOT, 'js', 'gen-manifest.js');
 const ANCHOR = join(OUT, '_anchor.png');
-const MODEL = 'gemini-2.5-flash-image';
+const MODEL = 'gemini-3.1-flash-image';
 
 const KEY = process.env.GEMINI_API_KEY;
 if (!KEY) {

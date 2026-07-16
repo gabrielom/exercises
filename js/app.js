@@ -48,6 +48,18 @@ export function chime(pattern) {
 function modeFor(ex) { return store.getPref(ex.id).mode || ex.mode; }
 function doneToday(exId) { return store.todayFor(exId).length > 0; }
 
+// Effective weight = per-exercise override (if the user has edited it) else the
+// program default from data.js. `ex.weight === undefined` means non-gym (no weight).
+function hasWeight(ex) { return ex.weight !== undefined; }
+function weightFor(ex) {
+  const w = store.getPref(ex.id).weight;
+  return (w === undefined || w === null) ? ex.weight : w;
+}
+function setWeight(ex, w) {
+  store.setPref(ex.id, { weight: Math.max(0, Math.min(999, Math.round(w * 2) / 2)) });
+}
+const WEIGHT_STEP = 2.5; // one plate-ish increment
+
 // ————— exercises grid —————
 
 function filteredList() {
@@ -61,7 +73,7 @@ function filteredList() {
 function gcardHTML(ex) {
   const mode = modeFor(ex);
   const bits = [];
-  if (ex.weight) bits.push(`<span class="kg">${ex.weight} kg</span>`);
+  if (weightFor(ex)) bits.push(`<span class="kg">${weightFor(ex)} kg</span>`);
   bits.push(`<span>${mode === 'time' ? `⏱ ${fmtTime(ex.target)}` : `${ex.target} reps`}${ex.side ? ' · per side' : ''}</span>`);
   if (doneToday(ex.id)) bits.push('<span class="done">✓</span>');
   return `<button class="gcard" data-ex="${ex.id}">
@@ -146,7 +158,7 @@ function logCurrent(value) {
   const ex = currentEx();
   const mode = modeFor(ex);
   const entry = { ex: ex.id, mode, v: value };
-  if (ex.weight) entry.w = ex.weight;
+  if (weightFor(ex)) entry.w = weightFor(ex);
   store.logSet(entry);
   if (mode === 'reps') store.setPref(ex.id, { reps: value });
 }
@@ -228,7 +240,11 @@ function renderPlayer(slide) {
       ${ex.pt ? `<div class="p-pt">${ex.pt}</div>` : ''}
       ${ex.cue ? `<p class="p-cue">${ex.cue}</p>` : ''}
       <div class="p-badges">
-        ${ex.weight ? `<span class="kg">${ex.weight} kg</span>` : ''}
+        ${hasWeight(ex) ? `<div class="wedit">
+          <button class="wbtn" data-p="wminus" aria-label="Less weight">−</button>
+          <button class="wval" data-p="wtype" aria-label="Weight — long-press to type"><b id="pWeight">${weightFor(ex)}</b> kg</button>
+          <button class="wbtn" data-p="wplus" aria-label="More weight">+</button>
+        </div>` : ''}
         ${ex.side ? `<span class="bside">per side</span>` : ''}
       </div>
       <div class="seg" role="group" aria-label="Counting mode">
@@ -257,6 +273,12 @@ document.getElementById('player').addEventListener('click', e => {
     navigator.vibrate?.(8);
   }
   else if (act === 'pausetime') toggleTimerPause();
+  else if (act === 'wminus' || act === 'wplus') {
+    setWeight(ex, weightFor(ex) + (act === 'wplus' ? WEIGHT_STEP : -WEIGHT_STEP));
+    refreshWeight(ex);
+    navigator.vibrate?.(8);
+  }
+  else if (act === 'wtype') toast('Long-press to type a weight');
   else if (act === 'mode') { store.setPref(ex.id, { mode: btn.dataset.mode }); renderPlayer(false); }
   else if (act === 'done') {
     const mode = modeFor(ex);
@@ -272,6 +294,37 @@ document.getElementById('player').addEventListener('click', e => {
     advance();
   }
 });
+
+function refreshWeight(ex) {
+  const el = playerEl().querySelector('#pWeight');
+  if (el) el.textContent = weightFor(ex);
+}
+
+// Long-press the weight value to type an exact number (short tap just hints).
+(() => {
+  const pl = document.getElementById('player');
+  let timer = null, fired = false;
+  const clear = () => { clearTimeout(timer); timer = null; };
+  pl.addEventListener('pointerdown', e => {
+    if (!e.target.closest('[data-p="wtype"]')) return;
+    fired = false;
+    timer = setTimeout(() => {
+      fired = true;
+      navigator.vibrate?.(20);
+      const ex = currentEx();
+      const input = prompt(`Weight for ${ex.name} (kg)`, String(weightFor(ex)));
+      if (input !== null) {
+        const n = parseFloat(String(input).replace(',', '.'));
+        if (!Number.isNaN(n)) { setWeight(ex, n); refreshWeight(ex); toast(`Weight · ${weightFor(ex)} kg`); }
+      }
+    }, 500);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => pl.addEventListener(ev, clear));
+  // swallow the click that follows a long-press so the hint toast doesn't also fire
+  pl.addEventListener('click', e => {
+    if (fired && e.target.closest('[data-p="wtype"]')) { e.stopPropagation(); fired = false; }
+  }, true);
+})();
 
 // ————— history —————
 

@@ -135,6 +135,21 @@ img { -webkit-user-drag: none; user-select: none; }
 .p-badges { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
 .p-badges .kg { background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 8px; padding: 3px 10px; font-size: 13.5px; }
 .p-badges .bside { border: 1.5px solid var(--line); border-radius: 8px; padding: 3px 10px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.wedit { display: inline-flex; align-items: center; gap: 6px; }
+.wbtn {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  font-size: 18px; font-weight: 500; display: grid; place-items: center; line-height: 1;
+}
+.wbtn:active { transform: scale(0.94); }
+.wval {
+  background: var(--accent-soft); color: var(--accent); font-weight: 700;
+  border-radius: 8px; padding: 3px 10px; font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+.wval b { font-weight: 800; }
+.wval:active { background: var(--accent); color: #fff; }
 .seg {
   display: inline-flex; margin-top: 12px;
   border: 1px solid var(--line); border-radius: 999px; padding: 2px;

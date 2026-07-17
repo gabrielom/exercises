@@ -79,7 +79,7 @@ export const EXERCISES = [
   { id: 'bulgarian-split-squat',   cat: 'gym', group: 'f', name: 'Bulgarian Split Squat',       pt: 'Agachamento Búlgaro',       weight: 0,   mode: 'reps', target: 30, side: true },
   { id: 'calf-raise',              cat: 'gym', group: 'f', name: 'Calf Raise',                  pt: 'Panturrilha',               weight: 0,   mode: 'reps', target: 30 },
   { id: 'calf-raise-single',       cat: 'gym', group: 'f', name: 'Single-leg Calf Raise',       pt: 'Panturrilha Unilateral',    weight: 0,   mode: 'reps', target: 30, side: true },
-  { id: 'ab-iso-hold',             cat: 'gym', group: 'f', name: 'Plank Hold',                  pt: 'Abdominal Isometria',       weight: 0,   mode: 'time', target: 45 },
+  { id: 'ab-iso-hold',             cat: 'gym', group: 'f', name: 'Plank Hold',                  pt: 'Abdominal Isometria',       weight: 0,   mode: 'time', target: 60 },
   { id: 'crunches',                cat: 'gym', group: 'f', name: 'Crunches',                    pt: 'Abdominal',                 weight: 0,   mode: 'reps', target: 30 },
 
   // ═══════════════ GYM · Série G — back & biceps (nova) ═══════════════
@@ -92,12 +92,12 @@ export const EXERCISES = [
   { id: 'concentration-curl',      cat: 'gym', group: 'g', name: 'Concentration Curl',          pt: 'Rosca Concentrada',         weight: 9,   mode: 'reps', target: 30, side: true },
 
   // ═══════════════ GYM · Série H — legs & lower back (nova) ═══════════════
-  { id: 'leg-extension-iso',       cat: 'gym', group: 'h', name: 'Leg Extension · Iso Hold',    pt: 'Extensor Isometria',        weight: 70,  mode: 'time', target: 30 },
+  { id: 'leg-extension-iso',       cat: 'gym', group: 'h', name: 'Leg Extension · Iso Hold',    pt: 'Extensor Isometria',        weight: 70,  mode: 'time', target: 60 },
   { id: 'leg-extension-both',      cat: 'gym', group: 'h', name: 'Leg Extension · Both',        pt: 'Extensor Junto',            weight: 70,  mode: 'reps', target: 30 },
   { id: 'leg-extension-single',    cat: 'gym', group: 'h', name: 'Leg Extension · Single',      pt: 'Extensor Unilateral',       weight: 35,  mode: 'reps', target: 30, side: true },
   { id: 'leg-curl-lying-single',   cat: 'gym', group: 'h', name: 'Single-leg Lying Curl',       pt: 'Flexor Unilateral Deitado', weight: 20,  mode: 'reps', target: 30, side: true },
-  { id: 'hip-abductor-iso',        cat: 'gym', group: 'h', name: 'Hip Abductor 45° · Iso',      pt: 'Abdutor 45 / Isometria',    weight: 75,  mode: 'time', target: 30 },
-  { id: 'hip-adductor-iso',        cat: 'gym', group: 'h', name: 'Hip Adductor 45° · Iso',      pt: 'Adutor 45 / Isometria',     weight: 70,  mode: 'time', target: 30 },
+  { id: 'hip-abductor-iso',        cat: 'gym', group: 'h', name: 'Hip Abductor 45° · Iso',      pt: 'Abdutor 45 / Isometria',    weight: 75,  mode: 'time', target: 60 },
+  { id: 'hip-adductor-iso',        cat: 'gym', group: 'h', name: 'Hip Adductor 45° · Iso',      pt: 'Adutor 45 / Isometria',     weight: 70,  mode: 'time', target: 60 },
   { id: 'back-extension',          cat: 'gym', group: 'h', name: 'Back Extension',              pt: 'Flexão Lombar',             weight: 0,   mode: 'reps', target: 30 },
 
   // ═══════════════ PUSH-UPS ═══════════════

@@ -125,7 +125,7 @@ export const EXERCISES = [
   { id: 'dead-hang',        cat: 'cal',  name: 'Dead Hang',        mode: 'time', target: 30, cue: 'Relax into the hang, breathe' },
 
   // ═══════════════ STRETCHING · Warm-up ═══════════════
-  { id: 'neck-rolls',        cat: 'stretch', group: 'warm', name: 'Neck Rolls',        mode: 'time', target: 60, cue: 'Slow half-circles in front only — ear to shoulder, chin to chest, never crank back' },
+  { id: 'leg-swings',        cat: 'stretch', group: 'warm', name: 'Leg Swings',        mode: 'time', target: 60, cue: 'Front-to-back swings, tall posture, hips square — bigger each rep; switch legs halfway' },
   { id: 'cat-cow',           cat: 'stretch', group: 'warm', name: 'Cat–Cow',           mode: 'time', target: 60, cue: 'Move with the breath — inhale arch and look up, exhale round and press the floor away' },
   { id: 'thoracic-rotation', cat: 'stretch', group: 'warm', name: 'Thoracic Rotation', mode: 'time', target: 60, side: true, cue: 'All fours, hand behind head — open to the ceiling and follow the elbow with your eyes' },
   { id: 'hip-cars',          cat: 'stretch', group: 'warm', name: 'Hip CARs',          mode: 'time', target: 60, side: true, cue: 'Biggest pain-free knee circle at the hip, torso braced still — slow beats big' },
@@ -148,7 +148,6 @@ export const EXERCISES = [
   { id: 'low-lunge',        cat: 'stretch', group: 'psoas', name: 'Low Lunge',              mode: 'time', target: 60, side: true, cue: 'Tuck the pelvis and squeeze the back glute first, then sink — the stretch is in the front of the back hip' },
   { id: 'couch-stretch',    cat: 'stretch', group: 'psoas', name: 'Couch Stretch',          mode: 'time', target: 60, side: true, cue: 'Back foot up the wall, knee in the corner — rise only as far as the pelvis stays tucked' },
   { id: 'lizard',           cat: 'stretch', group: 'psoas', name: 'Lizard Pose',            mode: 'time', target: 60, side: true, cue: 'Both hands inside the front foot, back leg long — forearms down only if the hips stay level' },
-  { id: 'constructive-rest', cat: 'stretch', group: 'psoas', name: 'Constructive Rest',     mode: 'time', target: 60, cue: 'On the back, knees bent, feet flat — do nothing; slow breaths tell the psoas it is safe to let go' },
   { id: 'standing-hip-ext', cat: 'stretch', group: 'psoas', name: 'Standing Hip Extension', mode: 'time', target: 60, side: true, cue: 'Reach the leg long behind you, pelvis level and tucked — squeeze the glute, never arch the low back' },
 
   // ═══════════════ STRETCHING · Hamstrings ═══════════════
@@ -158,7 +157,7 @@ export const EXERCISES = [
   { id: 'hinge-fold',           cat: 'stretch', group: 'hams', name: 'Hinge Fold',           mode: 'time', target: 60, cue: 'Stick the butt back, arch the lower back, chest travels forward-and-down — stop the moment the arch is lost' },
   { id: 'half-split',           cat: 'stretch', group: 'hams', name: 'Half Split',           mode: 'time', target: 60, side: true, cue: 'Runner’s stretch — hips square and stacked over the back knee, chest long over the front leg' },
   { id: 'hurdler',              cat: 'stretch', group: 'hams', name: 'Hurdler Stretch',      mode: 'time', target: 60, side: true, cue: 'Sit on a cushion so the pelvis can tip forward — fold at the hips over the leg; a bent knee beats a rounded back' },
-  { id: 'rolldown',             cat: 'stretch', group: 'hams', name: 'Slow Rolldown',        mode: 'time', target: 60, cue: 'Roll down vertebra by vertebra with soft knees — hang, then rebuild the spine from the bottom up' },
+  { id: 'jefferson-curl',       cat: 'stretch', group: 'hams', name: 'Jefferson Curl',       mode: 'time', target: 60, cue: 'Light weight in the hands — roll down vertebra by vertebra, knees locked, hang, rebuild slowly' },
 
   // ═══════════════ STRETCHING · Front split (espacate) ═══════════════
   { id: 'lunge-pulses',         cat: 'stretch', group: 'split', name: 'Lunge Pulses',            mode: 'time', target: 60, side: true, cue: 'Deep lunge, back knee hovering — small controlled sinks with the hips square to the front' },
@@ -167,6 +166,8 @@ export const EXERCISES = [
   { id: 'standing-quad',        cat: 'stretch', group: 'split', name: 'Standing Quad Pull',      mode: 'time', target: 60, side: true, cue: 'Heel to glute, knees together, pelvis tucked — the pull climbs the front of the thigh' },
   { id: 'front-split',          cat: 'stretch', group: 'split', name: 'Front Split · Espacate',  mode: 'time', target: 60, side: true, cue: 'Blocks under the hands, hips square — belly-breathe, soften the face, and sink a little on each exhale' },
   { id: 'split-pnf',            cat: 'stretch', group: 'split', name: 'Split PNF Press',         mode: 'time', target: 60, side: true, cue: 'In your deepest split: press both legs into the floor 10 s, release with a belly breath — repeat 3 rounds' },
+  { id: 'standing-split',       cat: 'stretch', group: 'split', name: 'Standing Split',       mode: 'time', target: 60, side: true, cue: 'Fold over the standing leg, back leg climbs high — square the hips first, then chase height' },
+  { id: 'twisted-lizard',       cat: 'stretch', group: 'split', name: 'Twisted Lizard',       mode: 'time', target: 60, side: true, cue: 'In lizard, bend the back knee and grab the foot — pull the heel in to open quad and hip flexor together' },
 
   // ═══════════════ STRETCHING · Pancake & middle split ═══════════════
   { id: 'butterfly',           cat: 'stretch', group: 'pancake', name: 'Butterfly',             mode: 'time', target: 60, cue: 'Soles together, sit tall — gently press the knees down and release, then tip the pelvis to fold' },
@@ -185,8 +186,6 @@ export const EXERCISES = [
   { id: 'sphinx-cobra',      cat: 'stretch', group: 'back', name: 'Sphinx → Cobra',     mode: 'time', target: 60, cue: 'Sphinx first, then press toward cobra — hips heavy, shoulders down, nothing pinching in the low back' },
   { id: 'puppy-pose',        cat: 'stretch', group: 'back', name: 'Puppy Pose',         mode: 'time', target: 60, cue: 'Hips high over the knees, chest melts to the floor — armpits reach long' },
   { id: 'chest-opener',      cat: 'stretch', group: 'back', name: 'Chest Opener',       mode: 'time', target: 60, cue: 'Forearms on a support, knees under the hips — let the chest sink through the shoulders' },
-  { id: 'childs-side-reach', cat: 'stretch', group: 'back', name: 'Child’s Side Reach', mode: 'time', target: 60, side: true, cue: 'From child’s pose walk both hands to one corner — breathe into the open ribs' },
-  { id: 'supine-twist',      cat: 'stretch', group: 'back', name: 'Supine Twist',       mode: 'time', target: 60, side: true, cue: 'Knee across the body, both shoulders down — let the knee hang and twist on the exhale' },
   { id: 'bridge-hold',       cat: 'stretch', group: 'back', name: 'Bridge Hold',        mode: 'time', target: 60, cue: 'Press through the heels, squeeze the glutes, open the front line — chin soft, ribs down' },
 
   // ═══════════════ STRETCHING · Glutes ═══════════════
@@ -234,7 +233,7 @@ export const ROUTINE = {
         '10 ERROS QUE TE DEIXAM MENOS FLEXÍVEL — Lu Corti',
       ],
       items: [
-        ['neck-rolls'], ['cat-cow'], ['thoracic-rotation', 'LR'],
+        ['leg-swings'], ['cat-cow'], ['thoracic-rotation', 'LR'],
         ['hip-cars', 'LR'], ['deep-squat-hold'], ['down-dog-flow'],
       ],
     },
@@ -264,7 +263,7 @@ export const ROUTINE = {
       ],
       items: [
         ['psoas-march'], ['low-lunge', 'LR'], ['couch-stretch', 'LR'],
-        ['lizard', 'LR'], ['constructive-rest'], ['standing-hip-ext', 'LR'],
+        ['lizard', 'LR'], ['standing-hip-ext', 'LR'],
       ],
     },
     {
@@ -278,7 +277,7 @@ export const ROUTINE = {
       ],
       items: [
         ['elephant-walks'], ['forward-fold'], ['single-leg-hamstring', 'LR'],
-        ['hinge-fold'], ['half-split', 'LR'], ['hurdler', 'LR'], ['rolldown'],
+        ['hinge-fold'], ['half-split', 'LR'], ['hurdler', 'LR'], ['jefferson-curl'],
       ],
     },
     {
@@ -293,6 +292,7 @@ export const ROUTINE = {
       items: [
         ['lunge-pulses', 'LR'], ['lunge-halfsplit-flow', 'LR'], ['pigeon', 'LR'],
         ['standing-quad', 'LR'], ['front-split', 'LR'], ['split-pnf', 'LR'],
+        ['standing-split', 'LR'], ['twisted-lizard', 'LR'],
       ],
     },
     {
@@ -316,8 +316,7 @@ export const ROUTINE = {
         'Ballet Total Body DEEP Stretching — Lazy Dancer Tips',
       ],
       items: [
-        ['sphinx-cobra'], ['puppy-pose'], ['chest-opener'],
-        ['childs-side-reach', 'LR'], ['supine-twist', 'LR'], ['bridge-hold'],
+        ['sphinx-cobra'], ['puppy-pose'], ['chest-opener'], ['bridge-hold'],
       ],
     },
     {

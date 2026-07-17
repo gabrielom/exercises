@@ -1,4 +1,6 @@
-import { CATS, GYM_GROUPS, EXERCISES, byId, imgFor } from './data.js';
+import { CATS, GYM_GROUPS, STRETCH_GROUPS, EXERCISES, byId, imgFor } from './data.js';
+
+const SUBGROUPS = { gym: GYM_GROUPS, stretch: STRETCH_GROUPS };
 import * as store from './store.js';
 import { mountRoutine, leaveRoutine } from './routine.js';
 
@@ -7,7 +9,7 @@ store.init();
 const view = document.getElementById('view');
 const toastEl = document.getElementById('toast');
 
-const state = { tab: 'exercises', cat: 'all', gymGroup: 'all' };
+const state = { tab: 'exercises', cat: 'all', group: 'all' };
 
 // ————— helpers —————
 
@@ -76,8 +78,8 @@ const TIME_STEP = 15; // seconds
 
 function filteredList() {
   let list = EXERCISES.filter(e => state.cat === 'all' || e.cat === state.cat);
-  if (state.cat === 'gym' && state.gymGroup !== 'all') {
-    list = list.filter(e => e.group === state.gymGroup);
+  if (SUBGROUPS[state.cat] && state.group !== 'all') {
+    list = list.filter(e => e.group === state.group);
   }
   return list;
 }
@@ -99,18 +101,18 @@ function renderExercises() {
   const chips = [['all', 'All'], ...Object.entries(CATS)]
     .map(([id, label]) => `<button class="chip ${state.cat === id ? 'on' : ''}" data-cat="${id}">${label}</button>`)
     .join('');
-  const subchips = state.cat === 'gym'
-    ? `<div class="chips sub">${[['all', 'All groups'], ...Object.entries(GYM_GROUPS)]
-        .map(([id, label]) => `<button class="chip ${state.gymGroup === id ? 'on' : ''}" data-group="${id}">${label}</button>`).join('')}</div>`
+  const subchips = SUBGROUPS[state.cat]
+    ? `<div class="chips sub">${[['all', 'All groups'], ...Object.entries(SUBGROUPS[state.cat])]
+        .map(([id, label]) => `<button class="chip ${state.group === id ? 'on' : ''}" data-group="${id}">${label}</button>`).join('')}</div>`
     : '';
 
   const list = filteredList();
   let cells = '';
   let lastGroup = null;
   for (const ex of list) {
-    if (state.cat === 'gym' && state.gymGroup === 'all' && ex.group !== lastGroup) {
+    if (SUBGROUPS[state.cat] && state.group === 'all' && ex.group !== lastGroup) {
       lastGroup = ex.group;
-      cells += `<div class="group-head">${GYM_GROUPS[ex.group]}</div>`;
+      cells += `<div class="group-head">${SUBGROUPS[state.cat][ex.group]}</div>`;
     }
     cells += gcardHTML(ex);
   }
@@ -447,8 +449,8 @@ document.querySelector('.tabbar').addEventListener('click', e => {
 view.addEventListener('click', e => {
   const chip = e.target.closest('.chip');
   if (chip) {
-    if (chip.dataset.cat) { state.cat = chip.dataset.cat; state.gymGroup = 'all'; }
-    else if (chip.dataset.group) state.gymGroup = chip.dataset.group;
+    if (chip.dataset.cat) { state.cat = chip.dataset.cat; state.group = 'all'; }
+    else if (chip.dataset.group) state.group = chip.dataset.group;
     renderExercises();
     return;
   }

@@ -8,8 +8,7 @@ import { GENERATED } from './gen-manifest.js';
 export const CATS = {
   gym: 'Gym',
   stretch: 'Stretching',
-  push: 'Push-ups',
-  pull: 'Pull-ups',
+  cal: 'Push & Pull-ups',
 };
 
 // Eight ~1 h sessions: each original 2 h series was split at its natural
@@ -100,19 +99,18 @@ export const EXERCISES = [
   { id: 'hip-adductor-iso',        cat: 'gym', group: 'h', name: 'Hip Adductor 45° · Iso',      pt: 'Adutor 45 / Isometria',     weight: 70,  mode: 'time', target: 60 },
   { id: 'back-extension',          cat: 'gym', group: 'h', name: 'Back Extension',              pt: 'Flexão Lombar',             weight: 0,   mode: 'reps', target: 30 },
 
-  // ═══════════════ PUSH-UPS ═══════════════
-  { id: 'push-up',         cat: 'push', name: 'Push-up',         mode: 'reps', target: 12, cue: 'One straight line, chest to the floor' },
-  { id: 'wide-push-up',    cat: 'push', name: 'Wide Push-up',    mode: 'reps', target: 10, cue: 'Hands wide, elbows at 45°' },
-  { id: 'diamond-push-up', cat: 'push', name: 'Diamond Push-up', mode: 'reps', target: 8,  cue: 'Hands together under the chest' },
-  { id: 'incline-push-up', cat: 'push', name: 'Incline Push-up', mode: 'reps', target: 12, cue: 'Hands elevated, body still a plank' },
-  { id: 'knee-push-up',    cat: 'push', name: 'Knee Push-up',    mode: 'reps', target: 15, cue: 'Hips forward, line from knees to head' },
+  // ═══════════════ PUSH & PULL-UPS ═══════════════
+  { id: 'push-up',         cat: 'cal',  name: 'Push-up',         mode: 'reps', target: 12, cue: 'One straight line, chest to the floor' },
+  { id: 'wide-push-up',    cat: 'cal',  name: 'Wide Push-up',    mode: 'reps', target: 10, cue: 'Hands wide, elbows at 45°' },
+  { id: 'diamond-push-up', cat: 'cal',  name: 'Diamond Push-up', mode: 'reps', target: 8,  cue: 'Hands together under the chest' },
+  { id: 'incline-push-up', cat: 'cal',  name: 'Incline Push-up', mode: 'reps', target: 12, cue: 'Hands elevated, body still a plank' },
+  { id: 'knee-push-up',    cat: 'cal',  name: 'Knee Push-up',    mode: 'reps', target: 15, cue: 'Hips forward, line from knees to head' },
 
-  // ═══════════════ PULL-UPS ═══════════════
-  { id: 'pull-up',          cat: 'pull', name: 'Pull-up',          mode: 'reps', target: 6,  cue: 'Chest to bar, full hang between reps' },
-  { id: 'chin-up',          cat: 'pull', name: 'Chin-up',          mode: 'reps', target: 6,  cue: 'Palms toward you, lead with the chest' },
-  { id: 'negative-pull-up', cat: 'pull', name: 'Negative Pull-up', mode: 'reps', target: 5,  cue: 'Jump up, lower for 5 slow counts' },
-  { id: 'scapular-pull',    cat: 'pull', name: 'Scapular Pull',    mode: 'reps', target: 8,  cue: 'Arms straight, shrug the shoulders down' },
-  { id: 'dead-hang',        cat: 'pull', name: 'Dead Hang',        mode: 'time', target: 30, cue: 'Relax into the hang, breathe' },
+  { id: 'pull-up',          cat: 'cal',  name: 'Pull-up',          mode: 'reps', target: 6,  cue: 'Chest to bar, full hang between reps' },
+  { id: 'chin-up',          cat: 'cal',  name: 'Chin-up',          mode: 'reps', target: 6,  cue: 'Palms toward you, lead with the chest' },
+  { id: 'negative-pull-up', cat: 'cal',  name: 'Negative Pull-up', mode: 'reps', target: 5,  cue: 'Jump up, lower for 5 slow counts' },
+  { id: 'scapular-pull',    cat: 'cal',  name: 'Scapular Pull',    mode: 'reps', target: 8,  cue: 'Arms straight, shrug the shoulders down' },
+  { id: 'dead-hang',        cat: 'cal',  name: 'Dead Hang',        mode: 'time', target: 30, cue: 'Relax into the hang, breathe' },
 
   // ═══════════════ STRETCHING · Warm-up ═══════════════
   { id: 'neck-rolls',        cat: 'stretch', name: 'Neck Rolls',        mode: 'time', target: 60, cue: 'Slow half-circles, ear toward shoulder' },

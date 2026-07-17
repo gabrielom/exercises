@@ -129,7 +129,7 @@ export const EXERCISES = [
   { id: 'cat-cow',           cat: 'stretch', group: 'warm', name: 'Cat–Cow',           mode: 'time', target: 60, cue: 'Move with the breath — inhale arch and look up, exhale round and press the floor away' },
   { id: 'thoracic-rotation', cat: 'stretch', group: 'warm', name: 'Thoracic Rotation', mode: 'time', target: 60, side: true, cue: 'All fours, hand behind head — open to the ceiling and follow the elbow with your eyes' },
   { id: 'hip-cars',          cat: 'stretch', group: 'warm', name: 'Hip CARs',          mode: 'time', target: 60, side: true, cue: 'Biggest pain-free knee circle at the hip, torso braced still — slow beats big' },
-  { id: 'deep-squat-hold',   cat: 'stretch', group: 'warm', name: 'Deep Squat Hold',   mode: 'time', target: 60, cue: 'Heels down, knees out over the toes, chest tall — breathe and let the hips sink' },
+  { id: 'deep-squat-hold',   cat: 'stretch', group: 'warm', name: 'Deep Squat Hold',   mode: 'time', target: 60, cue: 'Heels down, knees out over the toes, chest tall — hold onto a support rather than round or tip back' },
   { id: 'down-dog-flow',     cat: 'stretch', group: 'warm', name: 'Down Dog → Walk',   mode: 'time', target: 60, cue: 'Pedal the heels, press the chest toward the thighs, then walk the hands back to a fold' },
 
   // ═══════════════ STRETCHING · Feet & ankles (ballet) ═══════════════
@@ -140,11 +140,11 @@ export const EXERCISES = [
   { id: 'foot-doming',         cat: 'stretch', group: 'feet', name: 'Foot Doming',          mode: 'time', target: 60, cue: 'Short foot: pull the big-toe knuckle toward the heel so the arch lifts — toes long, not curled' },
   { id: 'point-flex',          cat: 'stretch', group: 'feet', name: 'Point & Flex',         mode: 'time', target: 60, cue: 'Articulate slowly — flex, roll through demi-pointe, then full point, and reverse the same way' },
   { id: 'releve-holds',        cat: 'stretch', group: 'feet', name: 'Relevé Holds',         mode: 'time', target: 60, cue: 'Rise to high demi-pointe over the first two toes, ankles stacked — hold without wobbling' },
-  { id: 'toe-stretch-kneel',   cat: 'stretch', group: 'feet', name: 'Kneeling Toe Stretch', mode: 'time', target: 60, cue: 'Kneel with the toes tucked and sit back on the heels — ease off if the plantar fascia burns' },
+  { id: 'toe-stretch-kneel',   cat: 'stretch', group: 'feet', name: 'Kneeling Toe Stretch', mode: 'time', target: 60, cue: 'Kneel with the toes tucked and sit back — build toward two comfortable minutes; ease off if it burns' },
   { id: 'arch-pointe-stretch', cat: 'stretch', group: 'feet', name: 'Arch & Pointe Stretch', mode: 'time', target: 60, cue: 'Top of the foot on the floor, press the arch forward over the toes — no pinching in the ankle' },
 
   // ═══════════════ STRETCHING · Psoas & hip flexors ═══════════════
-  { id: 'psoas-march',      cat: 'stretch', group: 'psoas', name: 'Psoas March',            mode: 'time', target: 60, cue: 'Drive one knee above 90° and hold 5 s per lift — the psoas gets trained, not just stretched' },
+  { id: 'psoas-march',      cat: 'stretch', group: 'psoas', name: 'Psoas March',            mode: 'time', target: 60, cue: 'Stand tall and drive the knee up — suck the thigh into the pelvis, pelvis level, lower slowly with control' },
   { id: 'low-lunge',        cat: 'stretch', group: 'psoas', name: 'Low Lunge',              mode: 'time', target: 60, side: true, cue: 'Tuck the pelvis and squeeze the back glute first, then sink — the stretch is in the front of the back hip' },
   { id: 'couch-stretch',    cat: 'stretch', group: 'psoas', name: 'Couch Stretch',          mode: 'time', target: 60, side: true, cue: 'Back foot up the wall, knee in the corner — rise only as far as the pelvis stays tucked' },
   { id: 'lizard',           cat: 'stretch', group: 'psoas', name: 'Lizard Pose',            mode: 'time', target: 60, side: true, cue: 'Both hands inside the front foot, back leg long — forearms down only if the hips stay level' },
@@ -152,12 +152,12 @@ export const EXERCISES = [
   { id: 'standing-hip-ext', cat: 'stretch', group: 'psoas', name: 'Standing Hip Extension', mode: 'time', target: 60, side: true, cue: 'Reach the leg long behind you, pelvis level and tucked — squeeze the glute, never arch the low back' },
 
   // ═══════════════ STRETCHING · Hamstrings ═══════════════
-  { id: 'elephant-walks',       cat: 'stretch', group: 'hams', name: 'Elephant Walks',       mode: 'time', target: 60, cue: 'Fold with hands on the floor or blocks — bend one knee while the other leg straightens fully' },
-  { id: 'forward-fold',         cat: 'stretch', group: 'hams', name: 'Forward Fold',         mode: 'time', target: 60, cue: 'Hinge from the hips, then hang heavy — soft knees, shake the head no, exhale deeper' },
+  { id: 'elephant-walks',       cat: 'stretch', group: 'hams', name: 'Elephant Walks',       mode: 'time', target: 60, cue: 'Fold and grab the legs — bend one knee as the other straightens, and pull yourself gently deeper' },
+  { id: 'forward-fold',         cat: 'stretch', group: 'hams', name: 'Forward Fold',         mode: 'time', target: 60, cue: 'Bend the knees as much as needed — tip the pelvis forward and fold at the hips, chest toward the thighs' },
   { id: 'single-leg-hamstring', cat: 'stretch', group: 'hams', name: 'Single-leg Hamstring', mode: 'time', target: 60, side: true, cue: 'On the back, leg to the ceiling with a strap — knee dead straight before you pull it closer' },
-  { id: 'hinge-fold',           cat: 'stretch', group: 'hams', name: 'Hinge Fold',           mode: 'time', target: 60, cue: 'Tip the pelvis forward with a flat back until it stops — that hinge is the stretch, not rounding down' },
+  { id: 'hinge-fold',           cat: 'stretch', group: 'hams', name: 'Hinge Fold',           mode: 'time', target: 60, cue: 'Stick the butt back, arch the lower back, chest travels forward-and-down — stop the moment the arch is lost' },
   { id: 'half-split',           cat: 'stretch', group: 'hams', name: 'Half Split',           mode: 'time', target: 60, side: true, cue: 'Runner’s stretch — hips square and stacked over the back knee, chest long over the front leg' },
-  { id: 'hurdler',              cat: 'stretch', group: 'hams', name: 'Hurdler Stretch',      mode: 'time', target: 60, side: true, cue: 'One leg long, fold from the pelvis over it — chest reaches for the toes, not nose to knee' },
+  { id: 'hurdler',              cat: 'stretch', group: 'hams', name: 'Hurdler Stretch',      mode: 'time', target: 60, side: true, cue: 'Sit on a cushion so the pelvis can tip forward — fold at the hips over the leg; a bent knee beats a rounded back' },
   { id: 'rolldown',             cat: 'stretch', group: 'hams', name: 'Slow Rolldown',        mode: 'time', target: 60, cue: 'Roll down vertebra by vertebra with soft knees — hang, then rebuild the spine from the bottom up' },
 
   // ═══════════════ STRETCHING · Front split (espacate) ═══════════════
@@ -165,21 +165,21 @@ export const EXERCISES = [
   { id: 'lunge-halfsplit-flow', cat: 'stretch', group: 'split', name: 'Lunge ⇄ Half-split Flow', mode: 'time', target: 60, side: true, cue: 'Glide between lunge and half-split without the hands leaving the floor — exhale into each end' },
   { id: 'pigeon',               cat: 'stretch', group: 'split', name: 'Pigeon Pose',             mode: 'time', target: 60, side: true, cue: 'Front shin across, back leg dead straight behind — level the hips before you fold' },
   { id: 'standing-quad',        cat: 'stretch', group: 'split', name: 'Standing Quad Pull',      mode: 'time', target: 60, side: true, cue: 'Heel to glute, knees together, pelvis tucked — the pull climbs the front of the thigh' },
-  { id: 'front-split',          cat: 'stretch', group: 'split', name: 'Front Split · Espacate',  mode: 'time', target: 60, side: true, cue: 'Blocks under the hands, hips square — slide the back knee away and lower a little on each exhale' },
-  { id: 'split-pnf',            cat: 'stretch', group: 'split', name: 'Split PNF Press',         mode: 'time', target: 60, side: true, cue: 'In your deepest split: press both legs into the floor 10 s, release, exhale deeper — 3 rounds' },
+  { id: 'front-split',          cat: 'stretch', group: 'split', name: 'Front Split · Espacate',  mode: 'time', target: 60, side: true, cue: 'Blocks under the hands, hips square — belly-breathe, soften the face, and sink a little on each exhale' },
+  { id: 'split-pnf',            cat: 'stretch', group: 'split', name: 'Split PNF Press',         mode: 'time', target: 60, side: true, cue: 'In your deepest split: press both legs into the floor 10 s, release with a belly breath — repeat 3 rounds' },
 
   // ═══════════════ STRETCHING · Pancake & middle split ═══════════════
-  { id: 'butterfly',           cat: 'stretch', group: 'pancake', name: 'Butterfly',             mode: 'time', target: 60, cue: 'Soles together, sit tall on a cushion — tip the pelvis forward and lead with the chest' },
+  { id: 'butterfly',           cat: 'stretch', group: 'pancake', name: 'Butterfly',             mode: 'time', target: 60, cue: 'Soles together, sit tall — gently press the knees down and release, then tip the pelvis to fold' },
   { id: 'ninety-ninety',       cat: 'stretch', group: 'pancake', name: '90/90 Hold',            mode: 'time', target: 60, side: true, cue: 'Both knees at right angles — grow tall first, then hinge the chest over the front shin' },
   { id: 'frog-rocks',          cat: 'stretch', group: 'pancake', name: 'Frog Rocks',            mode: 'time', target: 60, cue: 'Knees wide, ankles in line with the knees — rock back gently until the inner thighs catch' },
-  { id: 'frog-hold',           cat: 'stretch', group: 'pancake', name: 'Frog Hold',             mode: 'time', target: 60, cue: 'Hold where the rocks ended — hips sink between the knees; breathe, never force' },
+  { id: 'frog-hold',           cat: 'stretch', group: 'pancake', name: 'Frog Hold',             mode: 'time', target: 60, cue: 'Hold where the rocks ended — belly-breathe and soften the face; the knees drop when you stop guarding' },
   { id: 'horse-stance',        cat: 'stretch', group: 'pancake', name: 'Horse Stance',          mode: 'time', target: 60, cue: 'Wide stance, toes out, sit straight down — knees track over the toes, torso vertical' },
   { id: 'straddle-side-reach', cat: 'stretch', group: 'pancake', name: 'Straddle Side Reach',   mode: 'time', target: 60, side: true, cue: 'Rotate the chest over one leg and reach long — both sit bones stay glued down' },
-  { id: 'straddle-center',     cat: 'stretch', group: 'pancake', name: 'Straddle Center Reach', mode: 'time', target: 60, cue: 'Walk the hands forward with a flat back — stop before the spine rounds and breathe there' },
-  { id: 'pancake-fold',        cat: 'stretch', group: 'pancake', name: 'Pancake Fold',          mode: 'time', target: 60, cue: 'Sit on a cushion, tip the pelvis, chest leads — a flat back beats a deeper rounded one' },
-  { id: 'cossack',             cat: 'stretch', group: 'pancake', name: 'Cossack Squat Hold',    mode: 'time', target: 60, side: true, cue: 'Slide to one side, other leg long with the heel down — chest tall, elbow pries the knee open' },
+  { id: 'straddle-center',     cat: 'stretch', group: 'pancake', name: 'Straddle Center Reach', mode: 'time', target: 60, cue: 'Walk the hands forward with a long spine — reach the head toward the far wall, no rounding' },
+  { id: 'pancake-fold',        cat: 'stretch', group: 'pancake', name: 'Pancake Fold',          mode: 'time', target: 60, cue: 'Sit elevated, kneecaps pointing up, spine long — reach the forehead far forward instead of arching' },
+  { id: 'cossack',             cat: 'stretch', group: 'pancake', name: 'Cossack Squat Hold',    mode: 'time', target: 60, side: true, cue: 'Slide to one side, straight leg’s toes pointing forward, heel down — chest tall, sink with control' },
   { id: 'wall-straddle',       cat: 'stretch', group: 'pancake', name: 'Wall Straddle',         mode: 'time', target: 60, cue: 'Legs up the wall, open into a straddle — set the timer and let gravity do the work' },
-  { id: 'wide-leg-fold',       cat: 'stretch', group: 'pancake', name: 'Wide-leg Fold',         mode: 'time', target: 60, cue: 'Feet wide, fold from the hips and hold the ankles — pull the chest gently toward the floor' },
+  { id: 'wide-leg-fold',       cat: 'stretch', group: 'pancake', name: 'Wide-leg Fold',         mode: 'time', target: 60, cue: 'Feet wide, flat back — press the sit bones away, root the heels, and slide the hands down' },
 
   // ═══════════════ STRETCHING · Back & spine ═══════════════
   { id: 'sphinx-cobra',      cat: 'stretch', group: 'back', name: 'Sphinx → Cobra',     mode: 'time', target: 60, cue: 'Sphinx first, then press toward cobra — hips heavy, shoulders down, nothing pinching in the low back' },
@@ -214,11 +214,14 @@ export const ROUTINE = {
   tagline: 'Front split · Pancake · Feet — four 30 min series',
   hold: 60,
   rest: 30,
+  // Deep static stretching on cold muscles is the #1 mistake called out across
+  // the playlist (Dance Masterclass, blogilates, Lu Corti) — Série 1 opens with
+  // the warm-up block; the other three carry a warm-up reminder instead.
   series: [
     { id: 'feet',    name: 'Série 1 · Feet & Ankles',      blocks: ['Warm-up', 'Feet & Ankles'] },
-    { id: 'psoas',   name: 'Série 2 · Psoas & Hamstrings', blocks: ['Psoas & Hip Flexors', 'Hamstrings'] },
-    { id: 'split',   name: 'Série 3 · Front Split',        blocks: ['Front Split · Espacate', 'Back & Spine'] },
-    { id: 'pancake', name: 'Série 4 · Pancake & Glutes',   blocks: ['Pancake & Middle Split', 'Glutes & Finish'] },
+    { id: 'psoas',   name: 'Série 2 · Psoas & Hamstrings', blocks: ['Psoas & Hip Flexors', 'Hamstrings'], tip: 'Warm up 5 min first — light cardio and leg swings, never stretch cold' },
+    { id: 'split',   name: 'Série 3 · Front Split',        blocks: ['Front Split · Espacate', 'Back & Spine'], tip: 'Warm up 5 min first — light cardio and leg swings, never stretch cold' },
+    { id: 'pancake', name: 'Série 4 · Pancake & Glutes',   blocks: ['Pancake & Middle Split', 'Glutes & Finish'], tip: 'Warm up 5 min first — light cardio and leg swings, never stretch cold' },
   ],
   blocks: [
     {

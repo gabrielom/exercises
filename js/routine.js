@@ -226,6 +226,7 @@ function renderOverview() {
           <span class="s-meta">${s.slots.length} holds · ${fmtMins(s)}</span>
         </div>
         ${rows}
+        ${s.tip ? `<p class="s-tip">${s.tip}</p>` : ''}
         <div class="s-actions">
           <button class="bigbtn" data-r="${saved ? 'resume' : 'start'}" data-s="${s.id}">
             ${saved ? `Resume · ${saved.i + 1}/${s.slots.length}` : 'Start'}

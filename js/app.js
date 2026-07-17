@@ -60,6 +60,18 @@ function setWeight(ex, w) {
 }
 const WEIGHT_STEP = 2.5; // one plate-ish increment
 
+// Timer duration: user override, else the programmed time for natively timed
+// exercises, else one minute (a reps target is not a duration).
+function timeFor(ex) {
+  const t = store.getPref(ex.id).time;
+  if (t) return t;
+  return ex.mode === 'time' ? ex.target : 60;
+}
+function setTime(ex, t) {
+  store.setPref(ex.id, { time: Math.max(15, Math.min(600, Math.round(t / 15) * 15)) });
+}
+const TIME_STEP = 15; // seconds
+
 // ————— exercises grid —————
 
 function filteredList() {
@@ -74,7 +86,7 @@ function gcardHTML(ex) {
   const mode = modeFor(ex);
   const bits = [];
   if (weightFor(ex)) bits.push(`<span class="kg">${weightFor(ex)} kg</span>`);
-  bits.push(`<span>${mode === 'time' ? `⏱ ${fmtTime(ex.target)}` : `${ex.target} reps`}${ex.side ? ' · per side' : ''}</span>`);
+  bits.push(`<span>${mode === 'time' ? `⏱ ${fmtTime(timeFor(ex))}` : `${store.getPref(ex.id).reps || ex.target} reps`}${ex.side ? ' · per side' : ''}</span>`);
   if (doneToday(ex.id)) bits.push('<span class="done">✓</span>');
   return `<button class="gcard" data-ex="${ex.id}">
     <img src="${imgFor(ex.id)}" alt="" loading="lazy">
@@ -107,7 +119,7 @@ function renderExercises() {
 
 // ————— fullscreen player —————
 
-const player = { open: false, list: [], idx: 0, reps: 0, timer: null, interval: null };
+const player = { open: false, list: [], idx: 0, reps: 0, timer: null, interval: null, editing: false };
 
 function playerEl() { return document.getElementById('player'); }
 
@@ -136,14 +148,14 @@ function playerTick() {
     stopTimer();
     chime([[660, 0.14], [880, 0.2]]);
     navigator.vibrate?.([70, 60, 70]);
-    logCurrent(currentEx().target);
+    logCurrent(timeFor(currentEx()));
     advance();
   }
 }
 
 function toggleTimerPause() {
   const t = player.timer;
-  if (!t) { startTimer(currentEx().target); return; }
+  if (!t) { startTimer(timeFor(currentEx())); return; }
   if (t.running) {
     t.running = false;
     t.remaining = Math.max(0, (t.endAt - Date.now()) / 1000);
@@ -166,6 +178,7 @@ function logCurrent(value) {
 function advance() {
   if (player.idx >= player.list.length - 1) return renderPlayerDone();
   player.idx += 1;
+  player.editing = false;
   renderPlayer(true);
 }
 
@@ -173,6 +186,7 @@ function openPlayer(list, idx) {
   player.open = true;
   player.list = list;
   player.idx = idx;
+  player.editing = false;
   playerEl().hidden = false;
   document.body.style.overflow = 'hidden';
   renderPlayer(false);
@@ -214,15 +228,28 @@ function renderPlayer(slide) {
   player.reps = savedReps || ex.target;
   stopTimer();
 
-  const counter = mode === 'reps'
-    ? `<div class="stepper">
-         <button data-p="minus" aria-label="Fewer reps">−</button>
-         <div class="val"><b id="pReps">${player.reps}</b><span>reps${ex.side ? ' · per side' : ''}</span></div>
-         <button data-p="plus" aria-label="More reps">+</button>
-       </div>`
-    : `<button class="p-clock" data-p="pausetime" aria-label="Pause or resume">
-         <b id="pTime">${fmtTime(ex.target)}</b><span>tap to pause${ex.side ? ' · per side' : ''}</span>
-       </button>`;
+  let counter;
+  if (mode === 'reps') {
+    counter = player.editing
+      ? `<div class="stepper">
+           <button data-p="minus" aria-label="Fewer reps">−</button>
+           <div class="val"><b id="pReps">${player.reps}</b><span>reps${ex.side ? ' · per side' : ''}</span></div>
+           <button data-p="plus" aria-label="More reps">+</button>
+         </div>`
+      : `<div class="stepper">
+           <div class="val"><b id="pReps">${player.reps}</b><span>reps${ex.side ? ' · per side' : ''}</span></div>
+         </div>`;
+  } else {
+    counter = player.editing
+      ? `<div class="stepper">
+           <button data-p="tminus" aria-label="Shorter timer">−</button>
+           <div class="val"><b id="pDur">${fmtTime(timeFor(ex))}</b><span>timer</span></div>
+           <button data-p="tplus" aria-label="Longer timer">+</button>
+         </div>`
+      : `<button class="p-clock" data-p="pausetime" aria-label="Pause or resume">
+           <b id="pTime">${fmtTime(timeFor(ex))}</b><span>tap to pause${ex.side ? ' · per side' : ''}</span>
+         </button>`;
+  }
 
   playerEl().innerHTML = `
     <div class="p-top">
@@ -240,12 +267,18 @@ function renderPlayer(slide) {
       ${ex.pt ? `<div class="p-pt">${ex.pt}</div>` : ''}
       ${ex.cue ? `<p class="p-cue">${ex.cue}</p>` : ''}
       <div class="p-badges">
-        ${hasWeight(ex) ? `<div class="wedit">
-          <button class="wbtn" data-p="wminus" aria-label="Less weight">−</button>
-          <button class="wval" data-p="wtype" aria-label="Weight — long-press to type"><b id="pWeight">${weightFor(ex)}</b> kg</button>
-          <button class="wbtn" data-p="wplus" aria-label="More weight">+</button>
-        </div>` : ''}
+        ${hasWeight(ex) ? (player.editing
+          ? `<div class="wedit">
+              <button class="wbtn" data-p="wminus" aria-label="Less weight">−</button>
+              <button class="wval" data-p="wtype" aria-label="Weight — long-press to type"><b id="pWeight">${weightFor(ex)}</b> kg</button>
+              <button class="wbtn" data-p="wplus" aria-label="More weight">+</button>
+            </div>`
+          : (weightFor(ex) ? `<span class="kg"><b id="pWeight">${weightFor(ex)}</b> kg</span>` : ''))
+        : ''}
         ${ex.side ? `<span class="bside">per side</span>` : ''}
+        <button class="editbtn ${player.editing ? 'on' : ''}" data-p="edit" aria-label="${player.editing ? 'Finish editing' : 'Edit weight, reps and timer'}">
+          ${player.editing ? 'OK' : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg> Edit`}
+        </button>
       </div>
       <div class="seg" role="group" aria-label="Counting mode">
         <button data-p="mode" data-mode="reps" class="${mode === 'reps' ? 'on' : ''}">Reps</button>
@@ -256,7 +289,7 @@ function renderPlayer(slide) {
     <button class="donebtn" data-p="done">Done${mode === 'reps' ? '' : ' early'}</button>
     <p class="p-nextline">${next ? `Next · <b>${next.name}</b>` : 'Last one'}</p>`;
 
-  if (mode === 'time') startTimer(ex.target); // timers start automatically
+  if (mode === 'time' && !player.editing) startTimer(timeFor(ex)); // timers start automatically
 }
 
 // player events (delegated on the overlay)
@@ -266,16 +299,24 @@ document.getElementById('player').addEventListener('click', e => {
   const act = btn.dataset.p;
   const ex = currentEx();
   if (act === 'close') closePlayer();
-  else if (act === 'prev') { if (player.idx > 0) { player.idx -= 1; renderPlayer(true); } }
+  else if (act === 'prev') { if (player.idx > 0) { player.idx -= 1; player.editing = false; renderPlayer(true); } }
   else if (act === 'plus' || act === 'minus') {
     player.reps = Math.max(1, Math.min(99, player.reps + (act === 'plus' ? 1 : -1)));
+    store.setPref(ex.id, { reps: player.reps });
     playerEl().querySelector('#pReps').textContent = player.reps;
     navigator.vibrate?.(8);
   }
   else if (act === 'pausetime') toggleTimerPause();
+  else if (act === 'edit') { player.editing = !player.editing; renderPlayer(false); }
   else if (act === 'wminus' || act === 'wplus') {
     setWeight(ex, weightFor(ex) + (act === 'wplus' ? WEIGHT_STEP : -WEIGHT_STEP));
     refreshWeight(ex);
+    navigator.vibrate?.(8);
+  }
+  else if (act === 'tminus' || act === 'tplus') {
+    setTime(ex, timeFor(ex) + (act === 'tplus' ? TIME_STEP : -TIME_STEP));
+    const el = playerEl().querySelector('#pDur');
+    if (el) el.textContent = fmtTime(timeFor(ex));
     navigator.vibrate?.(8);
   }
   else if (act === 'wtype') toast('Long-press to type a weight');
@@ -285,7 +326,7 @@ document.getElementById('player').addEventListener('click', e => {
     if (mode === 'reps') {
       logCurrent(player.reps);
     } else {
-      const elapsed = Math.round(ex.target - (player.timer ? Math.max(0, player.timer.remaining) : 0));
+      const elapsed = Math.round(timeFor(ex) - (player.timer ? Math.max(0, player.timer.remaining) : 0));
       stopTimer();
       logCurrent(Math.max(1, elapsed));
     }

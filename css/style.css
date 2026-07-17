@@ -153,6 +153,13 @@ img[src^="img/gen/"] { border-radius: 14px; }
 }
 .wval b { font-weight: 800; }
 .wval:active { background: var(--accent); color: #fff; }
+.editbtn {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1.5px solid var(--line); border-radius: 8px;
+  padding: 3px 10px; font-size: 12.5px; color: var(--muted); font-weight: 600;
+}
+.editbtn svg { width: 13px; height: 13px; }
+.editbtn.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .seg {
   display: inline-flex; margin-top: 12px;
   border: 1px solid var(--line); border-radius: 999px; padding: 2px;

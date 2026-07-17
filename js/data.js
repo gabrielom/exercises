@@ -100,16 +100,16 @@ export const EXERCISES = [
   { id: 'back-extension',          cat: 'gym', group: 'h', name: 'Back Extension',              pt: 'Flexão Lombar',             weight: 0,   mode: 'reps', target: 30 },
 
   // ═══════════════ PUSH & PULL-UPS ═══════════════
-  { id: 'push-up',         cat: 'cal',  name: 'Push-up',         mode: 'reps', target: 12, cue: 'One straight line, chest to the floor' },
+  { id: 'push-up',         cat: 'cal',  name: 'Push-up',         mode: 'reps', target: 10, cue: 'One straight line, chest to the floor' },
   { id: 'wide-push-up',    cat: 'cal',  name: 'Wide Push-up',    mode: 'reps', target: 10, cue: 'Hands wide, elbows at 45°' },
-  { id: 'diamond-push-up', cat: 'cal',  name: 'Diamond Push-up', mode: 'reps', target: 8,  cue: 'Hands together under the chest' },
-  { id: 'incline-push-up', cat: 'cal',  name: 'Incline Push-up', mode: 'reps', target: 12, cue: 'Hands elevated, body still a plank' },
-  { id: 'knee-push-up',    cat: 'cal',  name: 'Knee Push-up',    mode: 'reps', target: 15, cue: 'Hips forward, line from knees to head' },
+  { id: 'diamond-push-up', cat: 'cal',  name: 'Diamond Push-up', mode: 'reps', target: 10,  cue: 'Hands together under the chest' },
+  { id: 'incline-push-up', cat: 'cal',  name: 'Incline Push-up', mode: 'reps', target: 10, cue: 'Hands elevated, body still a plank' },
+  { id: 'knee-push-up',    cat: 'cal',  name: 'Knee Push-up',    mode: 'reps', target: 10, cue: 'Hips forward, line from knees to head' },
 
-  { id: 'pull-up',          cat: 'cal',  name: 'Pull-up',          mode: 'reps', target: 6,  cue: 'Chest to bar, full hang between reps' },
-  { id: 'chin-up',          cat: 'cal',  name: 'Chin-up',          mode: 'reps', target: 6,  cue: 'Palms toward you, lead with the chest' },
-  { id: 'negative-pull-up', cat: 'cal',  name: 'Negative Pull-up', mode: 'reps', target: 5,  cue: 'Jump up, lower for 5 slow counts' },
-  { id: 'scapular-pull',    cat: 'cal',  name: 'Scapular Pull',    mode: 'reps', target: 8,  cue: 'Arms straight, shrug the shoulders down' },
+  { id: 'pull-up',          cat: 'cal',  name: 'Pull-up',          mode: 'reps', target: 10,  cue: 'Chest to bar, full hang between reps' },
+  { id: 'chin-up',          cat: 'cal',  name: 'Chin-up',          mode: 'reps', target: 10,  cue: 'Palms toward you, lead with the chest' },
+  { id: 'negative-pull-up', cat: 'cal',  name: 'Negative Pull-up', mode: 'reps', target: 10,  cue: 'Jump up, lower for 5 slow counts' },
+  { id: 'scapular-pull',    cat: 'cal',  name: 'Scapular Pull',    mode: 'reps', target: 10,  cue: 'Arms straight, shrug the shoulders down' },
   { id: 'dead-hang',        cat: 'cal',  name: 'Dead Hang',        mode: 'time', target: 30, cue: 'Relax into the hang, breathe' },
 
   // ═══════════════ STRETCHING · Warm-up ═══════════════

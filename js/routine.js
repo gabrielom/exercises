@@ -1,9 +1,9 @@
-import { ROUTINE, routineSlots, byId, imgFor } from './data.js';
+import { ROUTINE, seriesSlots, SLOT_SECONDS, byId, imgFor } from './data.js';
 import * as store from './store.js';
 import { fmtTime, toast } from './app.js';
 
-const slots = routineSlots();
-const TOTAL = slots.length * (ROUTINE.hold + ROUTINE.rest);
+const SERIES = ROUTINE.series.map(s => ({ ...s, slots: seriesSlots(s) }));
+const ALL_SLOTS = SERIES.reduce((a, s) => a + s.slots.length, 0);
 
 function fmtLong(totalS) {
   const s = Math.max(0, Math.round(totalS));
@@ -12,31 +12,54 @@ function fmtLong(totalS) {
   const m = Math.floor((s % 3600) / 60);
   return `${h}:${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
+const seriesSeconds = s => s.slots.length * SLOT_SECONDS;
+const fmtMins = s => `~${Math.round(seriesSeconds(s) / 60)} min`;
 
 let container = null;
-let st = { i: 0, phase: 'hold', remaining: ROUTINE.hold, running: false, started: false };
+let active = null;   // series currently in the player
+let st = null;       // { i, phase, remaining, running } for the active series
 let endAt = 0;
 let interval = null;
 let wakeLock = null;
 let audio = null;
 
-// restore saved progress
-const saved = store.get('routine');
-if (saved && saved.started && !saved.done) {
-  st = { ...st, ...saved, running: false };
+// ————— per-series saved progress —————
+// store 'routine' = { [seriesId]: { i, phase, remaining } }
+
+function loadProgress() {
+  const raw = store.get('routine');
+  if (!raw) return {};
+  // migrate the pre-series format ({ i, phase, remaining, started } over the
+  // old 80-slot flat order: warm/feet/psoas/hams/frontsplit/pancake/back/glutes)
+  if (typeof raw.i === 'number' && raw.started !== undefined) {
+    const i = raw.i;
+    const [id, local] =
+      i < 21 ? ['feet', i] :
+      i < 41 ? ['psoas', i - 21] :
+      i < 53 ? ['split', i - 41] :
+      i < 67 ? ['pancake', i - 53] :
+      i < 75 ? ['split', 12 + (i - 67)] :
+               ['pancake', 14 + (i - 75)];
+    return { [id]: { i: local, phase: raw.phase, remaining: raw.remaining } };
+  }
+  return raw;
+}
+let progress = loadProgress();
+
+function persist() {
+  if (active && st) {
+    progress[active.id] = { i: st.i, phase: st.phase, remaining: Math.round(currentRemaining()) };
+  }
+  store.set('routine', progress);
 }
 
 // ————— helpers —————
-
-function persist() {
-  store.set('routine', { i: st.i, phase: st.phase, remaining: Math.round(st.remaining), started: st.started });
-}
 
 function elapsedSeconds() {
   const inSlot = st.phase === 'hold'
     ? ROUTINE.hold - st.remaining
     : ROUTINE.hold + (ROUTINE.rest - st.remaining);
-  return st.i * (ROUTINE.hold + ROUTINE.rest) + inSlot;
+  return st.i * SLOT_SECONDS + inSlot;
 }
 
 function currentRemaining() {
@@ -49,10 +72,10 @@ async function grabWakeLock() {
 function dropWakeLock() { wakeLock?.release().catch(() => {}); wakeLock = null; }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && st.running && !wakeLock) grabWakeLock();
-  if (document.visibilityState === 'hidden') { st.remaining = currentRemaining(); persist(); }
+  if (document.visibilityState === 'visible' && st?.running && !wakeLock) grabWakeLock();
+  if (document.visibilityState === 'hidden' && st) { st.remaining = currentRemaining(); persist(); }
 });
-addEventListener('pagehide', () => { st.remaining = currentRemaining(); persist(); });
+addEventListener('pagehide', () => { if (st) { st.remaining = currentRemaining(); persist(); } });
 
 function beep(pattern) {
   try {
@@ -94,7 +117,7 @@ function beginPhase(seconds) {
 }
 
 function tick() {
-  if (!st.running) return;
+  if (!st?.running) return;
   const rem = (endAt - Date.now()) / 1000;
   if (rem <= 0) return advance();
   st.remaining = rem;
@@ -102,11 +125,11 @@ function tick() {
 }
 
 function advance() {
-  const slot = slots[st.i];
+  const slot = active.slots[st.i];
   if (st.phase === 'hold') {
     store.logSet({ ex: slot.ex, mode: 'time', v: ROUTINE.hold, side: slot.side || undefined, routine: true });
     navigator.vibrate?.([60, 60, 60]);
-    if (st.i >= slots.length - 1) return complete();
+    if (st.i >= active.slots.length - 1) return complete();
     beep(CHIME_REST);
     st.phase = 'rest';
     beginPhase(ROUTINE.rest);
@@ -119,8 +142,19 @@ function advance() {
   }
 }
 
+function startSeries(series, at = 0, phase = 'hold', remaining = null) {
+  active = series;
+  st = { i: Math.min(Math.max(at, 0), series.slots.length - 1), phase, remaining: ROUTINE.hold, running: false };
+  if (remaining !== null) {
+    st.remaining = remaining;
+    beginPhase(remaining);
+  } else {
+    beginPhase(phase === 'rest' ? ROUTINE.rest : ROUTINE.hold);
+  }
+}
+
 function goto(i) {
-  st.i = Math.min(Math.max(i, 0), slots.length - 1);
+  st.i = Math.min(Math.max(i, 0), active.slots.length - 1);
   st.phase = 'hold';
   beginPhase(ROUTINE.hold);
 }
@@ -138,29 +172,36 @@ function resume() {
 }
 
 function exitToOverview() {
-  if (st.running) { st.remaining = currentRemaining(); st.running = false; }
+  if (st) { st.remaining = currentRemaining(); st.running = false; }
   dropWakeLock();
   persist();
+  active = null;
+  st = null;
   renderOverview();
 }
 
 function complete() {
+  const done = active;
   st.running = false;
-  st.started = false;
   dropWakeLock();
-  store.remove('routine');
+  delete progress[done.id];
+  store.set('routine', progress);
   navigator.vibrate?.([80, 80, 80, 80, 200]);
   beep([[660, 0.15], [880, 0.15], [1100, 0.3]]);
+  const idx = SERIES.indexOf(done);
+  const next = SERIES[idx + 1];
   if (container) {
     container.innerHTML = `
       <div class="routine-wrap r-hero">
         <h2>Done.</h2>
-        <p class="tagline">${ROUTINE.name} complete — ${slots.length} holds · ${fmtLong(TOTAL)} of work.</p>
-        <div class="r-stats"><span><b>${slots.length}</b> holds logged</span><span><b>2h00</b> total</span></div>
-        <button class="bigbtn" data-r="restart">Start again someday</button>
+        <p class="tagline">${done.name} complete — ${done.slots.length} holds · ${fmtLong(seriesSeconds(done))} of work.</p>
+        ${next ? `<button class="bigbtn" data-r="start" data-s="${next.id}">Continue · ${next.name}</button>` : ''}
+        <button class="bigbtn ${next ? 'ghost' : ''}" data-r="overview">Back to overview</button>
       </div>`;
   }
-  toast('Corpo routine complete');
+  active = null;
+  st = null;
+  toast(`${done.name} complete`);
 }
 
 // ————— rendering —————
@@ -171,10 +212,27 @@ function sideBadge(side) {
 
 function renderOverview() {
   if (!container) return;
-  const resume = st.started;
-  const blocks = ROUTINE.blocks.map(b => {
-    const n = b.items.reduce((a, [, s]) => a + (s === 'LR' ? 2 : 1), 0);
-    return `<div class="block-row"><span class="b-name">${b.name}</span><span class="b-count">${n} × ${ROUTINE.hold}s</span></div>`;
+  const cards = SERIES.map(s => {
+    const saved = progress[s.id];
+    const rows = s.blocks.map(bn => {
+      const b = ROUTINE.blocks.find(x => x.name === bn);
+      const n = b.items.reduce((a, [, sd]) => a + (sd === 'LR' ? 2 : 1), 0);
+      return `<div class="block-row"><span class="b-name">${bn}</span><span class="b-count">${n} × ${ROUTINE.hold}s</span></div>`;
+    }).join('');
+    return `
+      <div class="series-card">
+        <div class="s-head">
+          <span class="s-name">${s.name}</span>
+          <span class="s-meta">${s.slots.length} holds · ${fmtMins(s)}</span>
+        </div>
+        ${rows}
+        <div class="s-actions">
+          <button class="bigbtn" data-r="${saved ? 'resume' : 'start'}" data-s="${s.id}">
+            ${saved ? `Resume · ${saved.i + 1}/${s.slots.length}` : 'Start'}
+          </button>
+          ${saved ? `<button class="bigbtn ghost" data-r="start" data-s="${s.id}">Restart</button>` : ''}
+        </div>
+      </div>`;
   }).join('');
   container.innerHTML = `
     <div class="routine-wrap">
@@ -182,31 +240,28 @@ function renderOverview() {
         <h2>${ROUTINE.name}</h2>
         <p class="tagline">${ROUTINE.tagline}</p>
         <div class="r-stats">
-          <span><b>${slots.length}</b> holds</span>
-          <span><b>${ROUTINE.hold}s</b> each</span>
-          <span><b>${ROUTINE.rest}s</b> rest</span>
-          <span><b>2h00</b> total</span>
+          <span><b>4</b> series</span>
+          <span><b>${ALL_SLOTS}</b> holds</span>
+          <span><b>${ROUTINE.hold}s</b> + ${ROUTINE.rest}s rest</span>
+          <span><b>2h00</b> in total</span>
         </div>
-        <button class="bigbtn" data-r="${resume ? 'resume' : 'start'}">
-          ${resume ? `Resume · ${st.i + 1}/${slots.length}` : 'Start'}
-        </button>
-        ${resume ? '<button class="bigbtn ghost" data-r="restart">Restart from the beginning</button>' : ''}
       </div>
-      <div class="blocklist">${blocks}</div>
+      ${cards}
       <p class="r-src">Built from the “Corpo” playlist — @gabriel_om. Every hold is logged to History automatically.</p>
     </div>`;
 }
 
 function renderPlayer() {
   if (!container || !container.querySelector) return;
-  const slot = slots[st.i];
+  const TOTAL = seriesSeconds(active);
+  const slot = active.slots[st.i];
   const ex = byId[slot.ex];
   const isHold = st.phase === 'hold';
-  const next = slots[st.i + 1];
+  const next = active.slots[st.i + 1];
   const nextEx = next ? byId[next.ex] : null;
   container.innerHTML = `
     <div class="routine-wrap player">
-      <div class="pl-block">${slot.block} · ${st.i + 1}/${slots.length}</div>
+      <div class="pl-block">${active.name} · ${slot.block} · ${st.i + 1}/${active.slots.length}</div>
       <div class="pl-name">${ex.name}${sideBadge(slot.side)}</div>
       <p class="pl-cue">${ex.cue || ''}</p>
       <div class="pl-fig"><img src="${imgFor(ex.id)}" alt=""></div>
@@ -239,6 +294,7 @@ function renderPlayer() {
 function updateClock() {
   const clock = container?.querySelector?.('#pClock');
   if (!clock) return;
+  const TOTAL = seriesSeconds(active);
   clock.textContent = fmtTime(Math.ceil(currentRemaining()));
   const bar = container.querySelector('#pBar');
   if (bar) bar.style.width = `${(elapsedSeconds() / TOTAL) * 100}%`;
@@ -254,14 +310,20 @@ export function mountRoutine(el) {
     const btn = e.target.closest('button[data-r]');
     if (!btn) return;
     const r = btn.dataset.r;
-    if (r === 'start' || r === 'restart') { st.started = true; goto(0); }
-    else if (r === 'resume') { st.started = true; st.running ? renderPlayer() : resume(); }
+    const series = btn.dataset.s ? SERIES.find(s => s.id === btn.dataset.s) : null;
+    if (r === 'start' && series) { delete progress[series.id]; startSeries(series); }
+    else if (r === 'resume' && series) {
+      const p = progress[series.id];
+      if (p) startSeries(series, p.i, p.phase, p.remaining);
+      else startSeries(series);
+    }
+    else if (r === 'overview') renderOverview();
     else if (r === 'playpause') { st.running ? pause() : resume(); }
     else if (r === 'skip') goto(st.i + 1);
     else if (r === 'back') goto(st.i - 1);
     else if (r === 'exit') exitToOverview();
   };
-  if (st.running) renderPlayer();
+  if (st?.running) renderPlayer();
   else renderOverview();
 }
 

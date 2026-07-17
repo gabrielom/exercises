@@ -193,16 +193,23 @@ export const imgFor = id => GENERATED[id] ? `img/gen/${id}.${GENERATED[id]}` : `
 
 // ————————————————————————————————————————————————————————————————
 // The Corpo routine — built from the "Corpo" playlist (@gabriel_om).
-// 80 slots × (60 s hold + 30 s rest) = exactly 2 h.
+// 80 slots × (60 s hold + 30 s rest) = exactly 2 h, playable as four
+// standalone ~30 min series (block pairs chosen to balance slot counts).
 // Focus: front split (espacate) · pancake opening · feet & ballet.
 // ————————————————————————————————————————————————————————————————
 
 export const ROUTINE = {
   id: 'corpo',
   name: 'Corpo',
-  tagline: 'Front split · Pancake · Feet — 2 hours',
+  tagline: 'Front split · Pancake · Feet — four 30 min series',
   hold: 60,
   rest: 30,
+  series: [
+    { id: 'feet',    name: 'Série 1 · Feet & Ankles',      blocks: ['Warm-up', 'Feet & Ankles'] },
+    { id: 'psoas',   name: 'Série 2 · Psoas & Hamstrings', blocks: ['Psoas & Hip Flexors', 'Hamstrings'] },
+    { id: 'split',   name: 'Série 3 · Front Split',        blocks: ['Front Split · Espacate', 'Back & Spine'] },
+    { id: 'pancake', name: 'Série 4 · Pancake & Glutes',   blocks: ['Pancake & Middle Split', 'Glutes & Finish'] },
+  ],
   blocks: [
     {
       name: 'Warm-up',
@@ -310,9 +317,10 @@ export const ROUTINE = {
   ],
 };
 
-export function routineSlots() {
+export function seriesSlots(series) {
   const slots = [];
-  for (const block of ROUTINE.blocks) {
+  for (const blockName of series.blocks) {
+    const block = ROUTINE.blocks.find(b => b.name === blockName);
     for (const [id, sides] of block.items) {
       if (sides === 'LR') {
         slots.push({ ex: id, side: 'L', block: block.name });
@@ -326,4 +334,3 @@ export function routineSlots() {
 }
 
 export const SLOT_SECONDS = ROUTINE.hold + ROUTINE.rest;
-export function routineTotalSeconds() { return routineSlots().length * SLOT_SECONDS; }

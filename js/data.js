@@ -8,7 +8,7 @@ import { GENERATED } from './gen-manifest.js';
 export const CATS = {
   gym: 'Gym',
   stretch: 'Stretching',
-  cal: 'Push & Pull-ups',
+  cal: 'Calisthenics',
 };
 
 // Eight ~1 h sessions: each original 2 h series was split at its natural

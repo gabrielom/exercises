@@ -81,7 +81,9 @@ main { max-width: 1180px; margin: 0 auto; padding-top: calc(10px + env(safe-area
 .chip.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--accent); }
 .themebtn { color: var(--muted); padding: 4px; }
 .themebtn svg { width: 18px; height: 18px; display: block; }
-.chips .themebtn { margin-left: auto; flex: 0 0 auto; }
+/* tab links carry 4px padding + 2px underline under their text, so their text
+   sits ~3px above the flex row's center — lift the icon to match it */
+.chips .themebtn { margin-left: auto; flex: 0 0 auto; margin-bottom: 6px; }
 .chips.sub { padding-top: 0; gap: 14px; }
 .chips.sub .chip { font-size: 12.5px; }
 
@@ -344,7 +346,9 @@ img[src^="img/gen/"] { border-radius: 18px; }
 
 /* ————— floating tab bar ————— */
 .tabbar {
-  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  /* overlap the home-indicator inset instead of stacking on it: ~40px on a
+     notched iPhone, the spec's 14px minimum everywhere else */
+  position: fixed; left: 50%; bottom: max(14px, calc(6px + env(safe-area-inset-bottom, 0px)));
   transform: translateX(-50%);
   z-index: 30;
   display: flex; align-items: center; gap: 5px;

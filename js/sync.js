@@ -12,6 +12,7 @@
 // device's localStorage and is deliberately excluded from export backups.
 
 import * as store from './store.js';
+import { logKey } from './store.js';
 
 const FILE = 'exercises-sync.json';
 const API = 'https://api.github.com';
@@ -61,8 +62,6 @@ export async function connect(token) {
 
 export function disconnect() { store.remove('sync'); }
 
-const logKey = e => `${e.t}|${e.ex}|${e.side || ''}`;
-
 function mergeLogs(a, b) {
   const seen = new Map();
   for (const e of [...a, ...b]) {
@@ -81,7 +80,12 @@ function mergePrefs(local, remote) {
 }
 
 function payload() {
-  return { app: 'exercises', v: 1, log: store.get('log', []), prefs: store.get('prefs', {}) };
+  return {
+    app: 'exercises', v: 1,
+    log: store.get('log', []),
+    prefs: store.get('prefs', {}),
+    deleted: store.get('deleted', []),
+  };
 }
 
 let syncing = false;
@@ -103,14 +107,19 @@ export async function syncNow() {
     }
 
     const localLog = store.get('log', []);
-    const log = mergeLogs(localLog, remote.log || []);
+    // tombstones win over the union — a set untoggled on any device stays gone
+    const deleted = [...new Set([...store.get('deleted', []), ...(remote.deleted || [])])];
+    const delSet = new Set(deleted);
+    const log = mergeLogs(localLog, remote.log || []).filter(e => !delSet.has(logKey(e)));
     const prefs = mergePrefs(store.get('prefs', {}), remote.prefs || {});
     const pulled = log.length - localLog.length;
 
     store.set('log', log);
     store.set('prefs', prefs);
+    store.set('deleted', deleted);
 
     const changed = log.length !== (remote.log || []).length
+      || deleted.length !== (remote.deleted || []).length
       || JSON.stringify(prefs) !== JSON.stringify(remote.prefs || {});
     if (changed) {
       await gh(`/gists/${c.gistId}`, {

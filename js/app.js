@@ -93,7 +93,7 @@ function gcardHTML(ex) {
   return `<div class="gcard" data-ex="${ex.id}" role="button" tabindex="0">
     <div class="g-img">
       <img src="${imgFor(ex.id)}" alt="" loading="lazy">
-      <button class="qlog ${logged ? 'logged' : ''}" data-q="${ex.id}" aria-label="${logged ? 'Log another set' : 'Quick-log this exercise'}">
+      <button class="qlog ${logged ? 'logged' : ''}" data-q="${ex.id}" aria-label="${logged ? 'Undo today’s set' : 'Quick-log this exercise'}">
         <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${logged ? 3 : 2.4}" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l5 5L19 7"/></svg></i>
       </button>
     </div>
@@ -102,15 +102,22 @@ function gcardHTML(ex) {
   </div>`;
 }
 
-// Quick-log: same record as finishing the exercise in the player.
+// Quick-log toggle: unchecked → log a set (same record as finishing it in the
+// player); checked → remove today's most recent set for that exercise.
 function quickLog(ex) {
-  const mode = modeFor(ex);
-  const v = mode === 'reps' ? (store.getPref(ex.id).reps || ex.target) : timeFor(ex);
-  const entry = { ex: ex.id, mode, v };
-  if (weightFor(ex)) entry.w = weightFor(ex);
-  store.logSet(entry);
-  navigator.vibrate?.(20);
-  toast(`Logged · ${ex.name} ✓`);
+  if (doneToday(ex.id)) {
+    store.undoLastToday(ex.id);
+    navigator.vibrate?.(12);
+    toast(`Removed · ${ex.name}`);
+  } else {
+    const mode = modeFor(ex);
+    const v = mode === 'reps' ? (store.getPref(ex.id).reps || ex.target) : timeFor(ex);
+    const entry = { ex: ex.id, mode, v };
+    if (weightFor(ex)) entry.w = weightFor(ex);
+    store.logSet(entry);
+    navigator.vibrate?.(20);
+    toast(`Logged · ${ex.name} ✓`);
+  }
   renderExercises();
 }
 

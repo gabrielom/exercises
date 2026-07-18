@@ -86,14 +86,39 @@ function filteredList() {
 
 function gcardHTML(ex) {
   const mode = modeFor(ex);
-  const bits = [];
-  if (weightFor(ex)) bits.push(`<span class="kg">${weightFor(ex)} kg</span>`);
-  bits.push(`<span>${mode === 'time' ? `⏱ ${fmtTime(timeFor(ex))}` : `${store.getPref(ex.id).reps || ex.target} reps`}${ex.side ? ' · per side' : ''}</span>`);
-  if (doneToday(ex.id)) bits.push('<span class="done">✓</span>');
-  return `<button class="gcard" data-ex="${ex.id}">
-    <img src="${imgFor(ex.id)}" alt="" loading="lazy">
+  const logged = doneToday(ex.id);
+  const meta = `${weightFor(ex) ? `<span class="kg">${weightFor(ex)} kg ·</span>` : ''}
+    <span>${mode === 'time' ? `⏱ ${fmtTime(timeFor(ex))}` : `${store.getPref(ex.id).reps || ex.target} reps`}${ex.side ? ' · per side' : ''}</span>`;
+  return `<div class="gcard" data-ex="${ex.id}" role="button" tabindex="0">
+    <div class="g-img">
+      <img src="${imgFor(ex.id)}" alt="" loading="lazy">
+      <button class="qlog ${logged ? 'logged' : ''}" data-q="${ex.id}" aria-label="${logged ? 'Log another set' : 'Quick-log this exercise'}">
+        <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${logged ? 3 : 2.4}" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l5 5L19 7"/></svg></i>
+      </button>
+    </div>
     <span class="g-name">${ex.name}</span>
-    <span class="g-meta">${bits.join('')}</span>
+    <span class="g-meta">${meta}</span>
+  </div>`;
+}
+
+// Quick-log: same record as finishing the exercise in the player.
+function quickLog(ex) {
+  const mode = modeFor(ex);
+  const v = mode === 'reps' ? (store.getPref(ex.id).reps || ex.target) : timeFor(ex);
+  const entry = { ex: ex.id, mode, v };
+  if (weightFor(ex)) entry.w = weightFor(ex);
+  store.logSet(entry);
+  navigator.vibrate?.(20);
+  toast(`Logged · ${ex.name} ✓`);
+  renderExercises();
+}
+
+function themeBtnHTML() {
+  return `<button class="themebtn" data-act="theme" aria-label="Toggle theme" title="Theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+    </svg>
   </button>`;
 }
 
@@ -116,7 +141,7 @@ function renderExercises() {
     }
     cells += gcardHTML(ex);
   }
-  view.innerHTML = `<div class="chips">${chips}</div>${subchips}<div class="grid">${cells}</div>`;
+  view.innerHTML = `<div class="chips">${chips}${themeBtnHTML()}</div>${subchips}<div class="grid">${cells}</div>`;
 }
 
 // ————— fullscreen player —————
@@ -263,6 +288,7 @@ function renderPlayer(slide) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
     </div>
+    <div class="p-segments ${player.list.length > 24 ? 'many' : ''}">${player.list.map((_, k) => `<i class="${k <= player.idx ? 'done' : ''}"></i>`).join('')}</div>
     <div class="p-body ${slide ? 'slide' : ''}">
       <div class="p-img"><img src="${imgFor(ex.id)}" alt=""></div>
       <div class="p-name">${ex.name}</div>
@@ -384,7 +410,8 @@ function renderHistory() {
   const log = store.getLog();
   let body;
   if (!log.length) {
-    body = `<div class="empty">No sets logged yet.<br>Open any exercise and tap <b>Done</b>, or run the Corpo routine.</div>`;
+    body = `<div class="h-head"><h2 class="h-title">History</h2>${themeBtnHTML()}</div>
+      <div class="empty">No sets logged yet.<br>Open any exercise and tap <b>Done</b>, or run the Corpo routine.</div>`;
   } else {
     const byDay = new Map();
     for (const e of log) {
@@ -402,7 +429,7 @@ function renderHistory() {
     const weekSecs = week.filter(e => e.mode === 'time').reduce((a, e) => a + e.v, 0);
     const weekReps = week.filter(e => e.mode === 'reps').reduce((a, e) => a + e.v, 0);
     body = `
-      <h2 class="h-title">History</h2>
+      <div class="h-head"><h2 class="h-title">History</h2>${themeBtnHTML()}</div>
       <p class="h-sub">Last 7 days · ${week.length} sets · ${weekReps} reps · ${Math.round(weekSecs / 60)} min</p>
       ${days.map(d => `
         <section class="day">
@@ -454,6 +481,8 @@ view.addEventListener('click', e => {
     renderExercises();
     return;
   }
+  const q = e.target.closest('.qlog[data-q]');
+  if (q) { quickLog(byId[q.dataset.q]); return; }
   const card = e.target.closest('.gcard[data-ex]');
   if (card) {
     const list = filteredList().map(x => x.id);
@@ -503,7 +532,9 @@ function applyTheme() {
   else document.documentElement.setAttribute('data-theme', theme);
 }
 
-document.getElementById('themeBtn').addEventListener('click', () => {
+// Theme toggle lives inside rendered views (tabs row / History head) — delegate.
+document.addEventListener('click', e => {
+  if (!e.target.closest('[data-act="theme"]')) return;
   const s = store.get('settings', {});
   s.theme = { auto: 'light', light: 'dark', dark: 'auto' }[s.theme || 'auto'];
   store.set('settings', s);

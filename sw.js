@@ -1,5 +1,5 @@
 // Cache-first app-shell service worker. Bump VERSION on every deploy.
-const VERSION = 'exercises-v14';
+const VERSION = 'exercises-v15';
 const SHELL = [
   './',
   'index.html',
@@ -10,7 +10,8 @@ const SHELL = [
   'js/store.js',
   'js/routine.js',
   'manifest.webmanifest',
-  'icons/favicon.svg',
+  'icons/icon.svg',
+  'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/icon-maskable-512.png',

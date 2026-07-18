@@ -1,5 +1,5 @@
 // Cache-first app-shell service worker. Bump VERSION on every deploy.
-const VERSION = 'exercises-v15';
+const VERSION = 'exercises-v16';
 const SHELL = [
   './',
   'index.html',
@@ -8,6 +8,7 @@ const SHELL = [
   'js/data.js',
   'js/gen-manifest.js',
   'js/store.js',
+  'js/sync.js',
   'js/routine.js',
   'manifest.webmanifest',
   'icons/icon.svg',

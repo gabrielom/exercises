@@ -2,6 +2,7 @@ import { CATS, GYM_GROUPS, STRETCH_GROUPS, EXERCISES, byId, imgFor } from './dat
 
 const SUBGROUPS = { gym: GYM_GROUPS, stretch: STRETCH_GROUPS };
 import * as store from './store.js';
+import * as sync from './sync.js';
 import { mountRoutine, leaveRoutine } from './routine.js';
 
 store.init();
@@ -449,8 +450,36 @@ function renderHistory() {
       <button data-act="import">Import</button>
       <button data-act="reset" class="danger">Reset data</button>
     </div>
+    ${syncSectionHTML()}
     <input type="file" id="importFile" accept="application/json" hidden>
   </div>`;
+}
+
+function agoLabel(ts) {
+  if (!ts) return 'never';
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  if (m < 24 * 60) return `${Math.round(m / 60)} h ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+function syncSectionHTML() {
+  const c = sync.cfg();
+  const inner = c
+    ? `<div class="sync-status">Synced <b>${agoLabel(c.lastSync)}</b> · private gist <code>${c.gistId.slice(0, 7)}</code></div>
+       <div class="sync-actions">
+         <button data-act="sync-now">Sync now</button>
+         <button data-act="sync-off" class="danger">Disconnect</button>
+       </div>`
+    : `<p class="sync-help">Sync your history between devices through a private GitHub gist.
+         Create a <b>classic</b> personal access token with only the <b>gist</b> scope
+         (github.com → Settings → Developer settings → Tokens) and paste it once on each device.</p>
+       <div class="sync-form">
+         <input id="syncToken" type="password" placeholder="ghp_… token" autocomplete="off" spellcheck="false">
+         <button data-act="sync-connect">Connect</button>
+       </div>`;
+  return `<section class="day sync-section"><h3>Sync</h3><div class="sync-card">${inner}</div></section>`;
 }
 
 // ————— render root —————
@@ -494,7 +523,43 @@ view.addEventListener('click', e => {
   if (actBtn.dataset.act === 'export') doExport();
   else if (actBtn.dataset.act === 'import') view.querySelector('#importFile').click();
   else if (actBtn.dataset.act === 'reset') doReset();
+  else if (actBtn.dataset.act === 'sync-connect') doSyncConnect(actBtn);
+  else if (actBtn.dataset.act === 'sync-now') doSyncNow(actBtn);
+  else if (actBtn.dataset.act === 'sync-off') {
+    if (confirm('Disconnect sync on this device? The gist and other devices keep their data.')) {
+      sync.disconnect();
+      toast('Sync disconnected');
+      renderHistory();
+    }
+  }
 });
+
+async function doSyncConnect(btn) {
+  const input = view.querySelector('#syncToken');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  try {
+    const r = await sync.connect(input.value);
+    toast(`Sync connected${r?.pulled ? ` · ${r.pulled} ${r.pulled === 1 ? 'set' : 'sets'} pulled` : ''}`);
+    renderHistory();
+  } catch (err) {
+    toast(`Sync failed: ${err.message}`);
+    btn.disabled = false;
+    btn.textContent = 'Connect';
+  }
+}
+
+async function doSyncNow(btn) {
+  btn.disabled = true;
+  btn.textContent = 'Syncing…';
+  try {
+    const r = await sync.syncNow();
+    toast(r?.pulled ? `Synced · ${r.pulled} new ${r.pulled === 1 ? 'set' : 'sets'} pulled` : 'Synced ✓');
+  } catch (err) {
+    toast(`Sync failed: ${err.message}`);
+  }
+  if (state.tab === 'history') renderHistory();
+}
 
 view.addEventListener('change', e => {
   if (e.target.id !== 'importFile') return;
@@ -546,6 +611,7 @@ document.addEventListener('click', e => {
 
 applyTheme();
 render();
+if (sync.connected()) sync.schedule(1500); // pull other devices' sets shortly after open
 
 if ('serviceWorker' in navigator) {
   addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));

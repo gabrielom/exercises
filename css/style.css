@@ -313,6 +313,35 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .databar button:active { background: var(--line); }
 .databar .danger { color: var(--danger); }
 
+/* ————— gist sync ————— */
+.sync-section { margin-top: 26px; }
+.sync-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 13px 14px; display: grid; gap: 10px;
+}
+.sync-help { font-size: 12px; color: var(--muted2); line-height: 1.55; }
+.sync-form { display: flex; gap: 8px; }
+.sync-form input {
+  flex: 1; min-width: 0;
+  font: 13px/1.4 inherit; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line-strong); border-radius: 10px;
+  padding: 9px 12px;
+}
+.sync-form input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.sync-form button {
+  flex: 0 0 auto;
+  background: var(--accent); color: #f7f8f2;
+  font-size: 13px; font-weight: 700;
+  border-radius: 10px; padding: 9px 16px;
+}
+.sync-form button:disabled { opacity: 0.6; }
+.sync-status { font-size: 12.5px; color: var(--muted2); }
+.sync-status b { color: var(--ink); font-weight: 600; }
+.sync-status code { font-family: inherit; color: var(--accent-dark); background: var(--accent-soft); border-radius: 5px; padding: 1px 5px; }
+.sync-actions { display: flex; gap: 16px; }
+.sync-actions button { font-size: 12px; font-weight: 600; color: var(--accent-dark); padding: 2px 0; }
+.sync-actions .danger { color: var(--danger); }
+
 /* ————— floating tab bar ————— */
 .tabbar {
   position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px));

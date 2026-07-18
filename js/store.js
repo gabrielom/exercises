@@ -44,6 +44,7 @@ export function logSet(entry) {
   const log = get('log', []);
   log.push({ t: Date.now(), d: localDate(), ...entry });
   set('log', log);
+  dispatchEvent(new CustomEvent('exercises:logged'));
   return log;
 }
 
@@ -60,7 +61,7 @@ export function getPref(exId) { return (get('prefs', {}))[exId] || {}; }
 
 export function setPref(exId, patch) {
   const prefs = get('prefs', {});
-  prefs[exId] = { ...(prefs[exId] || {}), ...patch };
+  prefs[exId] = { ...(prefs[exId] || {}), ...patch, _ts: Date.now() };
   set('prefs', prefs);
 }
 

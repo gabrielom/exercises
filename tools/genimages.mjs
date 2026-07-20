@@ -35,13 +35,21 @@ if (!KEY) {
 // One shared style spec keeps the whole set coherent. Tweak freely — palette
 // values mirror css/style.css so the art sits naturally in the app.
 const STYLE = [
-  'Minimalist flat vector-style illustration of a single person performing an exercise,',
+  'Minimalist FLAT vector illustration of a single androgynous person performing an exercise,',
   'side view, full body visible, anatomically clear pose.',
-  'Solid warm orange figure (#e8642c) with slightly lighter far-side limbs (#f4a582),',
-  'gym equipment in muted warm grey (#a8a49c), simple shapes, no facial features.',
-  'Plain very light warm background (#f7f6f3), soft subtle ground shadow.',
+  'Flat solid color shapes only — no outlines, no shading detail, no facial features,',
+  'a completely blank face, simple rounded limbs, clean geometric silhouettes.',
+  'BODY SHAPE (critical): the torso is that of a slim teenage swimmer boy —',
+  'the chest line is PERFECTLY STRAIGHT AND FLAT from collarbone to waist in profile,',
+  'zero chest protrusion, no breasts, no bust, no pectoral bulge, straight waist, narrow hips.',
+  'Hair: very short cropped dark hair, buzzed short at the back and sides, plain and unstyled.',
+  'Clothing: straight boxy-cut sage-green short-sleeved athletic t-shirt (#5c7a52) that falls',
+  'straight down from the shoulders without contouring the torso, and knee-length shorts',
+  'with darker sage trim (#4c6a44).',
+  'Skin: warm neutral beige (#e0bd96); far-side limbs slightly lighter.',
+  'Gym equipment in muted warm grey (#a3a596) with darker grey details (#83857a).',
+  'Background: pure solid white (#ffffff) with ABSOLUTELY NO shadow, no ground shadow, no gradient.',
   'Square composition, generous margins, no text, no logos, no watermark.',
-  'Consistent character proportions across a series: medium build, rounded limbs.',
 ].join(' ');
 
 function promptFor(ex) {

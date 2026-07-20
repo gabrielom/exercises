@@ -46,7 +46,20 @@ for (const f of files) {
     await img.decode();
     const c = document.createElement('canvas');
     c.width = c.height = size;
-    c.getContext('2d').drawImage(img, 0, 0, size, size);
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, size, size);
+    // strip the generated white background → transparency (works on both themes):
+    // remove pixels that are both light and desaturated; figure colors (sage,
+    // skin) are saturated and equipment grey is much darker, so they survive
+    const d = g.getImageData(0, 0, size, size);
+    const px = d.data;
+    for (let p = 0; p < size * size; p++) {
+      const i = p * 4;
+      const mx = Math.max(px[i], px[i + 1], px[i + 2]);
+      const mn = Math.min(px[i], px[i + 1], px[i + 2]);
+      if (mn > 193 && (mx - mn) < 30) px[i + 3] = 0;
+    }
+    g.putImageData(d, 0, 0);
     return c.toDataURL('image/webp', q);
   }, [png.toString('base64'), SIZE, QUALITY]);
   const webp = Buffer.from(dataUrl.split(',')[1], 'base64');

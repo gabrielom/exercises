@@ -53,11 +53,29 @@ for (const f of files) {
     // skin) are saturated and equipment grey is much darker, so they survive
     const d = g.getImageData(0, 0, size, size);
     const px = d.data;
-    for (let p = 0; p < size * size; p++) {
-      const i = p * 4;
+    const lightDesat = i => {
       const mx = Math.max(px[i], px[i + 1], px[i + 2]);
       const mn = Math.min(px[i], px[i + 1], px[i + 2]);
-      if (mn > 193 && (mx - mn) < 30) px[i + 3] = 0;
+      return { mx, mn, bg: mn > 193 && (mx - mn) < 30 };
+    };
+    for (let p = 0; p < size * size; p++) {
+      const i = p * 4;
+      if (lightDesat(i).bg) px[i + 3] = 0;
+    }
+    // de-fringe: light desaturated pixels touching transparency are the white
+    // halo left by anti-aliasing — fade them out proportionally to lightness.
+    // Equipment grey (~163) and figure colors are darker/saturated: untouched.
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const p = y * size + x, i = p * 4;
+      if (px[i + 3] === 0) continue;
+      const nearHole =
+        (x > 0 && px[i - 4 + 3] === 0) || (x < size - 1 && px[i + 4 + 3] === 0) ||
+        (y > 0 && px[i - size * 4 + 3] === 0) || (y < size - 1 && px[i + size * 4 + 3] === 0);
+      if (!nearHole) continue;
+      const { mx, mn } = lightDesat(i);
+      if (mn > 175 && (mx - mn) < 34) {
+        px[i + 3] = Math.max(0, Math.min(255, Math.round(255 * (194 - mn) / 19)));
+      }
     }
     g.putImageData(d, 0, 0);
     return c.toDataURL('image/webp', q);

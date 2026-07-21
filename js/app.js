@@ -149,7 +149,7 @@ function renderExercises() {
     }
     cells += gcardHTML(ex);
   }
-  view.innerHTML = `<div class="chips">${chips}${themeBtnHTML()}</div>${subchips}<div class="grid">${cells}</div>`;
+  view.innerHTML = `<div class="topbar"><div class="chips">${chips}${themeBtnHTML()}</div>${subchips}</div><div class="grid">${cells}</div>`;
 }
 
 // ————— fullscreen player —————
@@ -501,6 +501,11 @@ function render() {
 }
 
 // ————— events —————
+
+// Show a hairline under the sticky filter bar once the grid scrolls beneath it.
+addEventListener('scroll', () => {
+  document.querySelector('.topbar')?.classList.toggle('stuck', scrollY > 4);
+}, { passive: true });
 
 document.querySelector('.tabbar').addEventListener('click', e => {
   const btn = e.target.closest('button[data-tab]');

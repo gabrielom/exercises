@@ -18,6 +18,13 @@
   --toast-ink: #f3f3ec;
   --bar-shadow: 0 6px 20px rgba(38, 39, 31, 0.12);
   --content-pad: 90px;
+  /* Top clearance for the status bar / notch. In an installed window (iPad,
+     macOS) the OS draws its close/minimise/maximise controls over the top-left,
+     so reserve a minimum band there — see the display-mode override below. */
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+@media (display-mode: standalone), (display-mode: window-controls-overlay), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  :root { --safe-top: max(env(safe-area-inset-top, 0px), 48px); }
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -57,7 +64,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; bo
 h1, h2, h3 { font-weight: 600; letter-spacing: -0.01em; }
 img { -webkit-user-drag: none; user-select: none; }
 
-main { max-width: 1180px; margin: 0 auto; padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+main { max-width: 1180px; margin: 0 auto; }
 
 .iconbtn {
   width: 34px; height: 34px; border-radius: 50%;
@@ -67,6 +74,17 @@ main { max-width: 1180px; margin: 0 auto; padding-top: calc(10px + env(safe-area
 .iconbtn svg { width: 18px; height: 18px; }
 
 /* ————— filter tabs (text links, no chips) ————— */
+/* The filter bar sticks to the top and stays put while the grid scrolls under
+   it. Its top padding reserves room for the status bar / window controls so the
+   OS close/minimise/maximise buttons never land on the tabs. */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--bg);
+  padding-top: var(--safe-top);
+  transition: box-shadow .2s, border-color .2s;
+  border-bottom: 1px solid transparent;
+}
+.topbar.stuck { border-bottom-color: var(--line); }
 .chips {
   display: flex; gap: 18px; align-items: center;
   overflow-x: auto; scrollbar-width: none;
@@ -227,7 +245,7 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .p-done-screen p { color: var(--muted2); margin-top: 6px; }
 
 /* ————— routine ————— */
-.routine-wrap, .history-wrap { max-width: 560px; margin: 0 auto; padding: 4px 18px 32px; }
+.routine-wrap, .history-wrap { max-width: 560px; margin: 0 auto; padding: calc(var(--safe-top) + 4px) 18px 32px; }
 .r-hero { text-align: center; padding: 26px 0 18px; }
 .r-hero h2 { font-size: 30px; letter-spacing: -0.02em; }
 .r-hero .tagline { color: var(--muted2); font-size: 14px; margin-top: 4px; }

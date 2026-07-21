@@ -268,6 +268,7 @@ function renderPlayerDone() {
   stopTimer();
   const done = player.list.filter(id => doneToday(id)).length;
   playerEl().innerHTML = `
+    <div class="p-card">
     <div class="p-top">
       <button class="iconbtn" data-p="close" aria-label="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -278,6 +279,7 @@ function renderPlayerDone() {
       <h2>Done.</h2>
       <p>${done}/${player.list.length} exercises logged today. 💪</p>
       <button class="donebtn" data-p="close">Back to the list</button>
+    </div>
     </div>`;
   chime([[660, 0.15], [880, 0.15], [1100, 0.3]]);
   navigator.vibrate?.([80, 80, 160]);
@@ -315,6 +317,7 @@ function renderPlayer(slide) {
   }
 
   playerEl().innerHTML = `
+    <div class="p-card">
     <div class="p-top">
       <button class="iconbtn" data-p="close" aria-label="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -351,13 +354,15 @@ function renderPlayer(slide) {
       ${counter}
     </div>
     <button class="donebtn" data-p="done">Done${mode === 'reps' ? '' : ' early'}</button>
-    <p class="p-nextline">${next ? `Next · <b>${next.name}</b>` : 'Last one'}</p>`;
+    <p class="p-nextline">${next ? `Next · <b>${next.name}</b>` : 'Last one'}</p>
+    </div>`;
 
   if (mode === 'time' && !player.editing) startTimer(timeFor(ex)); // timers start automatically
 }
 
 // player events (delegated on the overlay)
 document.getElementById('player').addEventListener('click', e => {
+  if (e.target === e.currentTarget) { closePlayer(); return; } // tap the dimmed backdrop (lightbox)
   const btn = e.target.closest('[data-p]');
   if (!btn) return;
   const act = btn.dataset.p;

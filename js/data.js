@@ -1,7 +1,5 @@
 // Fixed exercise catalog. Every exercise ships with its own generated figure
-// (img/<id>.svg) — there is deliberately no way to create exercises in the app.
-
-import { GENERATED } from './gen-manifest.js';
+// (img/gen/<id>.webp) — there is deliberately no way to create exercises in the app.
 // mode: 'reps' or 'time' (seconds). weight: kg (gym program). side: done per side.
 // Gym exercises come from Gabriel's real program (Portuguese names kept in `pt`).
 
@@ -196,9 +194,8 @@ export const EXERCISES = [
 
 export const byId = Object.fromEntries(EXERCISES.map(e => [e.id, e]));
 
-// Generated illustration when one exists (see tools/genimages.mjs), otherwise
-// the procedural SVG pictogram.
-export const imgFor = id => GENERATED[id] ? `img/gen/${id}.${GENERATED[id]}` : `img/${id}.svg`;
+// Generated illustration for every exercise (see tools/genimages.mjs).
+export const imgFor = id => `img/gen/${id}.webp`;
 
 // ————————————————————————————————————————————————————————————————
 // The Corpo routine — built from the "Corpo" playlist (@gabriel_om).

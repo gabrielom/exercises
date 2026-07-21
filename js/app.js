@@ -7,6 +7,17 @@ import { mountRoutine, leaveRoutine } from './routine.js';
 
 store.init();
 
+// When installed as a window that carries OS traffic-light controls (iPad,
+// macOS), flag the document so the filter tabs inset to the right of them.
+// iPhone installs are full-screen with no such controls, so exclude them.
+(function markWindowed() {
+  const installed = matchMedia('(display-mode: standalone)').matches
+    || matchMedia('(display-mode: window-controls-overlay)').matches
+    || navigator.standalone === true;
+  const isPhone = /iPhone|iPod/.test(navigator.userAgent);
+  document.documentElement.classList.toggle('app-windowed', installed && !isPhone);
+})();
+
 const view = document.getElementById('view');
 const toastEl = document.getElementById('toast');
 

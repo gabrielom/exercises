@@ -18,13 +18,11 @@
   --toast-ink: #f3f3ec;
   --bar-shadow: 0 6px 20px rgba(38, 39, 31, 0.12);
   --content-pad: 90px;
-  /* Top clearance for the status bar / notch. In an installed window (iPad,
-     macOS) the OS draws its close/minimise/maximise controls over the top-left,
-     so reserve a minimum band there — see the display-mode override below. */
+  /* Top clearance for the status bar / notch (0 in a desktop/iPad window). */
   --safe-top: env(safe-area-inset-top, 0px);
-}
-@media (display-mode: standalone), (display-mode: window-controls-overlay), (display-mode: fullscreen), (display-mode: minimal-ui) {
-  :root { --safe-top: max(env(safe-area-inset-top, 0px), 48px); }
+  /* Left inset applied only in an installed window that has OS traffic-light
+     controls (iPad / macOS) — see the .app-windowed class set from app.js. */
+  --win-controls: 0px;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -90,6 +88,10 @@ main { max-width: 1180px; margin: 0 auto; }
   overflow-x: auto; scrollbar-width: none;
   padding: 6px 18px 12px;
 }
+/* In an installed iPad/Mac window, start the tabs to the right of the OS
+   traffic-light controls (var is 0 everywhere else, incl. iPhone). */
+.topbar .chips { padding-left: calc(18px + var(--win-controls)); }
+:root.app-windowed { --win-controls: 78px; }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
   flex: 0 0 auto;

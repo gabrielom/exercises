@@ -141,7 +141,17 @@ function themeBtnHTML() {
   </button>`;
 }
 
+// Horizontal scroll of the filter bars is remembered across re-renders so that
+// toggling e.g. Série G ⇄ H doesn't snap the sub-group bar back to the start.
+// The sub-group bar is keyed by category since each category has its own set.
+const barScroll = { main: 0, sub: {} };
+
 function renderExercises() {
+  const prevSub = view.querySelector('.chips.sub');
+  if (prevSub && renderExercises.lastCat != null) barScroll.sub[renderExercises.lastCat] = prevSub.scrollLeft;
+  const prevMain = view.querySelector('.topbar > .chips:not(.sub)');
+  if (prevMain) barScroll.main = prevMain.scrollLeft;
+
   const chips = [['all', 'All'], ...Object.entries(CATS)]
     .map(([id, label]) => `<button class="chip ${state.cat === id ? 'on' : ''}" data-cat="${id}">${label}</button>`)
     .join('');
@@ -161,6 +171,13 @@ function renderExercises() {
     cells += gcardHTML(ex);
   }
   view.innerHTML = `<div class="topbar"><div class="chips">${chips}${themeBtnHTML()}</div>${subchips}</div><div class="grid">${cells}</div>`;
+
+  // restore the remembered scroll positions for the new bars
+  const newMain = view.querySelector('.topbar > .chips:not(.sub)');
+  if (newMain) newMain.scrollLeft = barScroll.main;
+  const newSub = view.querySelector('.chips.sub');
+  if (newSub) newSub.scrollLeft = barScroll.sub[state.cat] || 0;
+  renderExercises.lastCat = state.cat;
 }
 
 // ————— fullscreen player —————

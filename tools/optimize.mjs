@@ -1,8 +1,7 @@
 // Shrinks generated exercise art: img/gen/<id>.png (1024², ~400 KB) becomes
-// img/gen/<id>.webp (768², ~40 KB) and the png is deleted. Uses headless
-// Chromium as the encoder via Playwright, so there are no native image deps.
-// Rerun tools/genimages.mjs afterwards (or let it run next time) to refresh
-// js/gen-manifest.js — it prefers .webp over .png automatically.
+// img/gen/<id>.webp (768², ~40 KB, transparent background) and the png is
+// deleted. Uses headless Chromium as the encoder via Playwright, so there are
+// no native image deps. The webp is what the app loads (see imgFor in data.js).
 //
 // Usage: node tools/optimize.mjs   (needs playwright installed or global)
 

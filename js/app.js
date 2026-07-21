@@ -27,7 +27,7 @@ export function toast(msg) {
   toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
 }
 
-export function chime(pattern) {
+function chime(pattern) {
   try {
     chime.ctx = chime.ctx || new (window.AudioContext || window.webkitAudioContext)();
     const ctx = chime.ctx;

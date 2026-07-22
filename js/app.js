@@ -261,7 +261,7 @@ function closePlayer() {
   player.wl?.release?.().catch(() => {});
   playerEl().hidden = true;
   document.body.style.overflow = '';
-  if (state.tab === 'exercises') renderExercises(); // refresh ✓ badges
+  if (state.tab === 'exercises') { renderExercises(); restoreScroll(); } // refresh ✓ badges, keep place
 }
 
 function renderPlayerDone() {
@@ -535,24 +535,46 @@ function render() {
 
 // ————— events —————
 
-// Show a hairline under the sticky filter bar once the grid scrolls beneath it.
+// Remember the vertical scroll position of each screen — and of each Exercises
+// category / sub-group — so switching filters or tabs returns you to where you
+// were instead of snapping back to the top.
+const scrollMem = {};
+const viewKey = () => (state.tab === 'exercises' ? `ex:${state.cat}:${state.group}` : state.tab);
+let curScrollKey = viewKey();
+let restoringScroll = false;
+function saveScroll() { if (!restoringScroll) scrollMem[curScrollKey] = scrollY; }
+function restoreScroll() {
+  curScrollKey = viewKey();
+  const y = scrollMem[curScrollKey] || 0;
+  restoringScroll = true;
+  scrollTo(0, y);
+  requestAnimationFrame(() => { scrollTo(0, y); restoringScroll = false; });
+}
+
+// Show a hairline under the sticky filter bar once the grid scrolls beneath it,
+// and keep the current screen's scroll position up to date.
 addEventListener('scroll', () => {
   document.querySelector('.topbar')?.classList.toggle('stuck', scrollY > 4);
+  saveScroll();
 }, { passive: true });
 
 document.querySelector('.tabbar').addEventListener('click', e => {
   const btn = e.target.closest('button[data-tab]');
   if (!btn) return;
+  saveScroll();
   state.tab = btn.dataset.tab;
   render();
+  restoreScroll();
 });
 
 view.addEventListener('click', e => {
   const chip = e.target.closest('.chip');
   if (chip) {
+    saveScroll();
     if (chip.dataset.cat) { state.cat = chip.dataset.cat; state.group = 'all'; }
     else if (chip.dataset.group) state.group = chip.dataset.group;
     renderExercises();
+    restoreScroll();
     return;
   }
   const q = e.target.closest('.qlog[data-q]');

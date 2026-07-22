@@ -542,13 +542,25 @@ const scrollMem = {};
 const viewKey = () => (state.tab === 'exercises' ? `ex:${state.cat}:${state.group}` : state.tab);
 let curScrollKey = viewKey();
 let restoringScroll = false;
+let restoreTimers = [];
 function saveScroll() { if (!restoringScroll) scrollMem[curScrollKey] = scrollY; }
 function restoreScroll() {
+  restoreTimers.forEach(clearTimeout); restoreTimers = [];
   curScrollKey = viewKey();
   const y = scrollMem[curScrollKey] || 0;
+  // Fresh screen (top): jump once and leave it immediately scrollable.
+  if (!y) { restoringScroll = false; scrollTo(0, 0); return; }
+  // Re-apply across a few frames + a short fallback: replacing a small
+  // sub-group with the long "All groups" list can leave iOS ignoring a single
+  // scroll until layout settles. The guard keeps saveScroll from clobbering the
+  // remembered value while we settle.
   restoringScroll = true;
-  scrollTo(0, y);
-  requestAnimationFrame(() => { scrollTo(0, y); restoringScroll = false; });
+  const apply = () => scrollTo(0, y);
+  apply();
+  requestAnimationFrame(apply);
+  requestAnimationFrame(() => requestAnimationFrame(apply));
+  restoreTimers.push(setTimeout(apply, 90));
+  restoreTimers.push(setTimeout(() => { restoringScroll = false; }, 140));
 }
 
 // Show a hairline under the sticky filter bar once the grid scrolls beneath it,

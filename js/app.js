@@ -145,6 +145,30 @@ function themeBtnHTML() {
 // toggling e.g. Série G ⇄ H doesn't snap the sub-group bar back to the start.
 // The sub-group bar is keyed by category since each category has its own set.
 const barScroll = { main: 0, sub: {} };
+// Last sub-group chosen per category, so returning to Gym restores the series
+// you were on instead of resetting to "All groups".
+const groupMem = {};
+
+function subchipsInner() {
+  const defs = SUBGROUPS[state.cat];
+  return defs
+    ? [['all', 'All groups'], ...Object.entries(defs)]
+        .map(([id, label]) => `<button class="chip ${state.group === id ? 'on' : ''}" data-group="${id}">${label}</button>`).join('')
+    : '';
+}
+
+function gridCells() {
+  const defs = SUBGROUPS[state.cat];
+  let cells = '', lastGroup = null;
+  for (const ex of filteredList()) {
+    if (defs && state.group === 'all' && ex.group !== lastGroup) {
+      lastGroup = ex.group;
+      cells += `<div class="group-head">${defs[ex.group]}</div>`;
+    }
+    cells += gcardHTML(ex);
+  }
+  return cells;
+}
 
 function renderExercises() {
   const prevSub = view.querySelector('.chips.sub');
@@ -152,25 +176,27 @@ function renderExercises() {
   const prevMain = view.querySelector('.topbar > .chips:not(.sub)');
   if (prevMain) barScroll.main = prevMain.scrollLeft;
 
-  const chips = [['all', 'All'], ...Object.entries(CATS)]
-    .map(([id, label]) => `<button class="chip ${state.cat === id ? 'on' : ''}" data-cat="${id}">${label}</button>`)
-    .join('');
-  const subchips = SUBGROUPS[state.cat]
-    ? `<div class="chips sub">${[['all', 'All groups'], ...Object.entries(SUBGROUPS[state.cat])]
-        .map(([id, label]) => `<button class="chip ${state.group === id ? 'on' : ''}" data-group="${id}">${label}</button>`).join('')}</div>`
-    : '';
-
-  const list = filteredList();
-  let cells = '';
-  let lastGroup = null;
-  for (const ex of list) {
-    if (SUBGROUPS[state.cat] && state.group === 'all' && ex.group !== lastGroup) {
-      lastGroup = ex.group;
-      cells += `<div class="group-head">${SUBGROUPS[state.cat][ex.group]}</div>`;
+  const topbar = view.querySelector('.topbar');
+  const grid = view.querySelector('.grid');
+  if (topbar && grid) {
+    // Update in place — the filter bar stays put (no full-page rebuild), only
+    // the active tab and the grid change, so switching screens is seamless.
+    topbar.querySelectorAll('.chips:not(.sub) .chip[data-cat]').forEach(c =>
+      c.classList.toggle('on', c.dataset.cat === state.cat));
+    let sub = topbar.querySelector('.chips.sub');
+    if (SUBGROUPS[state.cat]) {
+      if (sub) sub.innerHTML = subchipsInner();
+      else topbar.insertAdjacentHTML('beforeend', `<div class="chips sub">${subchipsInner()}</div>`);
+    } else if (sub) {
+      sub.remove();
     }
-    cells += gcardHTML(ex);
+    grid.innerHTML = gridCells();
+  } else {
+    const chips = [['all', 'All'], ...Object.entries(CATS)]
+      .map(([id, label]) => `<button class="chip ${state.cat === id ? 'on' : ''}" data-cat="${id}">${label}</button>`).join('');
+    const subchips = SUBGROUPS[state.cat] ? `<div class="chips sub">${subchipsInner()}</div>` : '';
+    view.innerHTML = `<div class="topbar"><div class="chips">${chips}${themeBtnHTML()}</div>${subchips}</div><div class="grid">${gridCells()}</div>`;
   }
-  view.innerHTML = `<div class="topbar"><div class="chips">${chips}${themeBtnHTML()}</div>${subchips}</div><div class="grid">${cells}</div>`;
 
   // restore the remembered scroll positions for the new bars
   const newMain = view.querySelector('.topbar > .chips:not(.sub)');
@@ -583,8 +609,13 @@ view.addEventListener('click', e => {
   const chip = e.target.closest('.chip');
   if (chip) {
     saveScroll();
-    if (chip.dataset.cat) { state.cat = chip.dataset.cat; state.group = 'all'; }
-    else if (chip.dataset.group) state.group = chip.dataset.group;
+    if (chip.dataset.cat) {
+      state.cat = chip.dataset.cat;
+      state.group = groupMem[state.cat] || 'all'; // resume this category's last sub-group
+    } else if (chip.dataset.group) {
+      state.group = chip.dataset.group;
+      groupMem[state.cat] = state.group;          // remember it for next time
+    }
     renderExercises();
     restoreScroll();
     return;

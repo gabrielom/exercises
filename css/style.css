@@ -97,6 +97,7 @@ main { max-width: 1180px; margin: 0 auto; }
   flex: 0 0 auto;
   font-size: 15px; color: var(--muted);
   padding: 0 0 4px; border-bottom: 2px solid transparent; border-radius: 0;
+  transition: color .18s ease, border-color .18s ease;
 }
 .chip.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--accent); }
 .themebtn { color: var(--muted); padding: 4px; }

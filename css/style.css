@@ -185,12 +185,8 @@ img[src^="img/gen/"] { border-radius: 18px; }
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
     padding: 16px 26px 24px;
   }
-  .p-top { padding-left: 0; } /* card is centred, clear of the window controls */
 }
 .p-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-/* In an installed iPad/Mac window, keep the close button clear of the OS
-   traffic-light controls (var is 0 elsewhere, incl. iPhone). */
-.p-top { padding-left: var(--win-controls); }
 .p-count { font-size: 12px; color: var(--muted2); font-variant-numeric: tabular-nums; font-weight: 600; }
 .p-segments { display: flex; gap: 4px; margin-top: 10px; }
 .p-segments.many { gap: 1.5px; }

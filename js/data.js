@@ -23,18 +23,6 @@ export const GYM_GROUPS = {
   h: 'Série H',
 };
 
-// Muscle focus per gym série, shown next to the section header on the grid.
-export const GROUP_FOCUS = {
-  a: 'chest & triceps',
-  b: 'legs & core',
-  c: 'back & biceps',
-  d: 'legs & glutes',
-  e: 'chest & triceps',
-  f: 'legs & abs',
-  g: 'back & biceps',
-  h: 'legs & lower back',
-};
-
 // Stretch groups mirror the Corpo routine blocks.
 export const STRETCH_GROUPS = {
   warm: 'Warm-up',

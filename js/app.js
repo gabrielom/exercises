@@ -1,4 +1,4 @@
-import { CATS, GYM_GROUPS, STRETCH_GROUPS, GROUP_FOCUS, EXERCISES, byId, imgFor } from './data.js';
+import { CATS, GYM_GROUPS, STRETCH_GROUPS, EXERCISES, byId, imgFor } from './data.js';
 
 const SUBGROUPS = { gym: GYM_GROUPS, stretch: STRETCH_GROUPS };
 import * as store from './store.js';
@@ -21,7 +21,7 @@ store.init();
 const view = document.getElementById('view');
 const toastEl = document.getElementById('toast');
 
-const state = { tab: 'exercises', cat: 'gym' };
+const state = { tab: 'exercises', cat: 'all', group: 'all' };
 
 // ————— helpers —————
 
@@ -89,7 +89,11 @@ const TIME_STEP = 15; // seconds
 // ————— exercises grid —————
 
 function filteredList() {
-  return EXERCISES.filter(e => e.cat === state.cat);
+  let list = EXERCISES.filter(e => state.cat === 'all' || e.cat === state.cat);
+  if (SUBGROUPS[state.cat] && state.group !== 'all') {
+    list = list.filter(e => e.group === state.group);
+  }
+  return list;
 }
 
 function gcardHTML(ex) {
@@ -137,39 +141,69 @@ function themeBtnHTML() {
   </button>`;
 }
 
-// Build the grid as stacked série sections — each group gets a header row
-// (name · focus · count chip) and its own card grid. Categories without series
-// (Calisthenics) render a single plain grid.
-function sectionsHTML() {
+// Horizontal scroll of the filter bars is remembered across re-renders so that
+// toggling e.g. Série G ⇄ H doesn't snap the sub-group bar back to the start.
+// The sub-group bar is keyed by category since each category has its own set.
+const barScroll = { main: 0, sub: {} };
+// Last sub-group chosen per category, so returning to Gym restores the series
+// you were on instead of resetting to "All groups".
+const groupMem = {};
+
+function subchipsInner() {
   const defs = SUBGROUPS[state.cat];
-  const all = filteredList();
-  if (!defs) return `<div class="grid">${all.map(gcardHTML).join('')}</div>`;
-  let html = '';
-  for (const g of Object.keys(defs)) {
-    const items = all.filter(e => e.group === g);
-    if (!items.length) continue;
-    const focus = state.cat === 'gym' && GROUP_FOCUS[g] ? `<span class="series-focus">${GROUP_FOCUS[g]}</span>` : '';
-    html += `<section class="series">
-      <div class="series-head"><span class="series-name">${defs[g]}</span>${focus}<span class="series-count">${items.length}</span></div>
-      <div class="grid">${items.map(gcardHTML).join('')}</div>
-    </section>`;
+  return defs
+    ? [['all', 'All groups'], ...Object.entries(defs)]
+        .map(([id, label]) => `<button class="chip ${state.group === id ? 'on' : ''}" data-group="${id}">${label}</button>`).join('')
+    : '';
+}
+
+function gridCells() {
+  const defs = SUBGROUPS[state.cat];
+  let cells = '', lastGroup = null;
+  for (const ex of filteredList()) {
+    if (defs && state.group === 'all' && ex.group !== lastGroup) {
+      lastGroup = ex.group;
+      cells += `<div class="group-head">${defs[ex.group]}</div>`;
+    }
+    cells += gcardHTML(ex);
   }
-  return html;
+  return cells;
 }
 
 function renderExercises() {
-  const chips = Object.entries(CATS)
-    .map(([id, label]) => `<button class="chip ${state.cat === id ? 'on' : ''}" data-cat="${id}">${label}</button>`).join('');
+  const prevSub = view.querySelector('.chips.sub');
+  if (prevSub && renderExercises.lastCat != null) barScroll.sub[renderExercises.lastCat] = prevSub.scrollLeft;
+  const prevMain = view.querySelector('.topbar > .chips:not(.sub)');
+  if (prevMain) barScroll.main = prevMain.scrollLeft;
+
   const topbar = view.querySelector('.topbar');
-  const list = view.querySelector('.ex-list');
-  if (topbar && list) {
-    // Update in place — the tab bar keeps its node, only the active tab and the
-    // section list change, so switching categories stays seamless.
-    topbar.querySelectorAll('.chip[data-cat]').forEach(c => c.classList.toggle('on', c.dataset.cat === state.cat));
-    list.innerHTML = sectionsHTML();
+  const grid = view.querySelector('.grid');
+  if (topbar && grid) {
+    // Update in place — the filter bar stays put (no full-page rebuild), only
+    // the active tab and the grid change, so switching screens is seamless.
+    topbar.querySelectorAll('.chips:not(.sub) .chip[data-cat]').forEach(c =>
+      c.classList.toggle('on', c.dataset.cat === state.cat));
+    let sub = topbar.querySelector('.chips.sub');
+    if (SUBGROUPS[state.cat]) {
+      if (sub) sub.innerHTML = subchipsInner();
+      else topbar.insertAdjacentHTML('beforeend', `<div class="chips sub">${subchipsInner()}</div>`);
+    } else if (sub) {
+      sub.remove();
+    }
+    grid.innerHTML = gridCells();
   } else {
-    view.innerHTML = `<div class="topbar"><div class="chips">${chips}${themeBtnHTML()}</div></div><div class="ex-list">${sectionsHTML()}</div>`;
+    const chips = [['all', 'All'], ...Object.entries(CATS)]
+      .map(([id, label]) => `<button class="chip ${state.cat === id ? 'on' : ''}" data-cat="${id}">${label}</button>`).join('');
+    const subchips = SUBGROUPS[state.cat] ? `<div class="chips sub">${subchipsInner()}</div>` : '';
+    view.innerHTML = `<div class="topbar"><div class="chips">${chips}${themeBtnHTML()}</div>${subchips}</div><div class="grid">${gridCells()}</div>`;
   }
+
+  // restore the remembered scroll positions for the new bars
+  const newMain = view.querySelector('.topbar > .chips:not(.sub)');
+  if (newMain) newMain.scrollLeft = barScroll.main;
+  const newSub = view.querySelector('.chips.sub');
+  if (newSub) newSub.scrollLeft = barScroll.sub[state.cat] || 0;
+  renderExercises.lastCat = state.cat;
 }
 
 // ————— fullscreen player —————
@@ -528,10 +562,10 @@ function render() {
 // ————— events —————
 
 // Remember the vertical scroll position of each screen — and of each Exercises
-// category — so switching categories or tabs returns you to where you were
-// instead of snapping back to the top.
+// category / sub-group — so switching filters or tabs returns you to where you
+// were instead of snapping back to the top.
 const scrollMem = {};
-const viewKey = () => (state.tab === 'exercises' ? `ex:${state.cat}` : state.tab);
+const viewKey = () => (state.tab === 'exercises' ? `ex:${state.cat}:${state.group}` : state.tab);
 let curScrollKey = viewKey();
 let restoringScroll = false;
 let restoreTimers = [];
@@ -572,10 +606,16 @@ document.querySelector('.tabbar').addEventListener('click', e => {
 });
 
 view.addEventListener('click', e => {
-  const chip = e.target.closest('.chip[data-cat]');
+  const chip = e.target.closest('.chip');
   if (chip) {
     saveScroll();
-    state.cat = chip.dataset.cat;
+    if (chip.dataset.cat) {
+      state.cat = chip.dataset.cat;
+      state.group = groupMem[state.cat] || 'all'; // resume this category's last sub-group
+    } else if (chip.dataset.group) {
+      state.group = chip.dataset.group;
+      groupMem[state.cat] = state.group;          // remember it for next time
+    }
     renderExercises();
     restoreScroll();
     return;

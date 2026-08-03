@@ -17,9 +17,7 @@
   --toast-bg: #26271f;
   --toast-ink: #f3f3ec;
   --bar-shadow: 0 6px 20px rgba(38, 39, 31, 0.12);
-  --content-pad: 100px;
-  /* horizontal page inset — keeps the tabs row and the card grid aligned */
-  --edge: 18px;
+  --content-pad: 90px;
   /* Top clearance for the status bar / notch (0 in a desktop/iPad window). */
   --safe-top: env(safe-area-inset-top, 0px);
   /* Left inset applied only in an installed window that has OS traffic-light
@@ -88,11 +86,11 @@ main { max-width: 1180px; margin: 0 auto; }
 .chips {
   display: flex; gap: 18px; align-items: center;
   overflow-x: auto; scrollbar-width: none;
-  padding: 6px var(--edge) 12px;
+  padding: 6px 18px 12px;
 }
 /* In an installed iPad/Mac window, start the tabs to the right of the OS
    traffic-light controls (var is 0 everywhere else, incl. iPhone). */
-.topbar .chips { padding-left: calc(var(--edge) + var(--win-controls)); }
+.topbar .chips { padding-left: calc(18px + var(--win-controls)); }
 :root.app-windowed { --win-controls: 78px; }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
@@ -107,44 +105,25 @@ main { max-width: 1180px; margin: 0 auto; }
 /* tab links carry 4px padding + 2px underline under their text, so their text
    sits ~3px above the flex row's center — lift the icon to match it */
 .chips .themebtn { margin-left: auto; flex: 0 0 auto; margin-bottom: 6px; }
-/* ————— exercise grid, grouped into série sections ————— */
-.ex-list {
-  padding: 2px var(--edge) 0;
-  display: flex; flex-direction: column; gap: 18px;
-}
-.series-head {
-  display: flex; align-items: baseline; gap: 8px; padding: 0 2px 10px;
-}
-.series-name { font-size: 14px; font-weight: 700; }
-.series-focus { font-size: 12.5px; color: var(--muted); }
-.series-count {
-  margin-left: auto; flex: 0 0 auto;
-  font-size: 11px; font-weight: 600; color: var(--accent);
-  background: var(--accent-soft); border-radius: 999px; padding: 2px 9px;
-}
+.chips.sub { padding-top: 0; gap: 14px; }
+.chips.sub .chip { font-size: 12.5px; }
+
+/* ————— exercise grid ————— */
 .grid {
   display: grid; grid-template-columns: repeat(2, 1fr);
-  gap: 16px 14px;
+  gap: 18px 16px; padding: 4px 16px 24px;
 }
-@media (min-width: 768px) {
-  :root { --edge: 32px; }
-  .ex-list { gap: 26px; }
-  .grid { grid-template-columns: repeat(4, 1fr); gap: 22px 18px; }
-  .series-head { gap: 10px; padding: 0 2px 14px; }
-  .series-name { font-size: 18px; }
-  .series-focus { font-size: 15px; }
-  .series-count { font-size: 13px; padding: 3px 12px; }
-}
-@media (min-width: 1200px) {
-  .ex-list { max-width: 1180px; margin: 0 auto; gap: 28px; }
-  .grid { grid-template-columns: repeat(5, 1fr); }
-  .series-name { font-size: 17px; }
-  .series-focus { font-size: 14.5px; }
-  .series-count { font-size: 12.5px; }
+@media (min-width: 768px)  { .grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1200px) { .grid { grid-template-columns: repeat(5, 1fr); } }
+
+.group-head {
+  grid-column: 1 / -1;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); padding: 8px 2px 0;
 }
 .gcard {
   text-align: center;
-  display: flex; flex-direction: column; gap: 7px;
+  display: flex; flex-direction: column; gap: 5px;
   transition: transform .08s;
   cursor: pointer;
 }
@@ -415,8 +394,8 @@ img[src^="img/gen/"] { border-radius: 18px; }
   position: fixed; left: 50%; bottom: max(14px, calc(6px + env(safe-area-inset-bottom, 0px)));
   transform: translateX(-50%);
   z-index: 30;
-  display: inline-flex;            /* hug the tabs, no stretch */
-  background: var(--card);
+  display: inline-flex;            /* hugs its tabs — no gaps, no stretch */
+  background: var(--card);         /* fully opaque */
   border: 1px solid var(--line);
   border-radius: 22px;
   padding: 5px;
@@ -425,11 +404,12 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .tabbar button {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 6px 16px 5px; border-radius: 17px;
-  color: var(--muted2);           /* inactive icon */
+  color: var(--muted2);
   transition: background .18s ease, color .18s ease;
 }
 .tabbar button span { display: block; font-size: 11px; font-weight: 500; color: var(--muted2); }
 .tabbar button svg { width: 21px; height: 21px; display: block; }
+/* active tab: one sage capsule wrapping icon *and* label */
 .tabbar button.on { background: var(--accent-soft); color: var(--accent); }
 .tabbar button.on span { color: var(--ink); font-weight: 650; }
 @media (min-width: 768px) {
@@ -444,7 +424,8 @@ img[src^="img/gen/"] { border-radius: 18px; }
   .tabbar button span { font-size: 12.5px; }
   .tabbar button svg { width: 23px; height: 23px; }
 }
-/* the taller labelled bar sits higher on tablet/desktop — clear it */
+/* the labelled bar is taller and sits higher on tablet/desktop (~96px of the
+   bottom edge) — give the page and the toast room to clear it */
 @media (min-width: 768px) {
   :root { --content-pad: 120px; }
   #toast { bottom: calc(106px + env(safe-area-inset-bottom, 0px)); }
@@ -452,7 +433,7 @@ img[src^="img/gen/"] { border-radius: 18px; }
 
 /* ————— toast ————— */
 #toast {
-  position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  position: fixed; left: 50%; bottom: calc(64px + 18px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%) translateY(8px);
   background: var(--toast-bg); color: var(--toast-ink);
   font-size: 13px; font-weight: 600;

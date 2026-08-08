@@ -389,9 +389,11 @@ img[src^="img/gen/"] { border-radius: 18px; }
 
 /* ————— floating tab bar — content-hugging, label under every icon ————— */
 .tabbar {
-  /* overlap the home-indicator inset instead of stacking on it: ~40px on a
-     notched iPhone, the spec's 14px minimum everywhere else */
-  position: fixed; left: 50%; bottom: max(14px, calc(6px + env(safe-area-inset-bottom, 0px)));
+  /* Sit just above the home indicator rather than stacking on top of its inset:
+     the inset is ~34px on a notched iPhone, which would push the bar 40px up.
+     Subtracting most of it lands the bar ~16px off the bottom edge there, and
+     the 14px floor applies everywhere without an inset. */
+  position: fixed; left: 50%; bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) - 18px));
   transform: translateX(-50%);
   z-index: 30;
   display: inline-flex;            /* hugs its tabs — no gaps, no stretch */
@@ -413,7 +415,7 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .tabbar button.on { background: var(--accent-soft); color: var(--accent); }
 .tabbar button.on span { color: var(--ink); font-weight: 650; }
 @media (min-width: 768px) {
-  .tabbar { border-radius: 26px; padding: 6px; bottom: max(20px, calc(6px + env(safe-area-inset-bottom, 0px))); }
+  .tabbar { border-radius: 26px; padding: 6px; bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) - 6px)); }
   .tabbar button { padding: 8px 22px 7px; border-radius: 21px; gap: 3px; }
   .tabbar button span { font-size: 13px; }
   .tabbar button svg { width: 25px; height: 25px; }

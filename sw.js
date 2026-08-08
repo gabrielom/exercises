@@ -1,5 +1,5 @@
 // Cache-first app-shell service worker. Bump VERSION on every deploy.
-const VERSION = "exercises-v34";
+const VERSION = "exercises-v35";
 const SHELL = [
   "./",
   "index.html",

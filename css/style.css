@@ -389,11 +389,12 @@ img[src^="img/gen/"] { border-radius: 18px; }
 
 /* ————— floating tab bar — content-hugging, label under every icon ————— */
 .tabbar {
-  /* Sit just above the home indicator rather than stacking on top of its inset:
-     the inset is ~34px on a notched iPhone, which would push the bar 40px up.
-     Subtracting most of it lands the bar ~16px off the bottom edge there, and
-     the 14px floor applies everywhere without an inset. */
-  position: fixed; left: 50%; bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) - 18px));
+  /* Sit just above the home indicator rather than stacking on top of its inset
+     (6px + a 34px inset pushed the bar 40px up on a notched iPhone). Measured
+     off WhatsApp, whose bar's bottom edge lands 21px above the screen edge on a
+     375x812 device — subtracting 13px from the inset matches that. The 14px
+     floor applies everywhere without an inset. */
+  position: fixed; left: 50%; bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) - 13px));
   transform: translateX(-50%);
   z-index: 30;
   display: inline-flex;            /* hugs its tabs — no gaps, no stretch */

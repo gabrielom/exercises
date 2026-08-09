@@ -1,25 +1,27 @@
 # Reference archive
 
-Original design/build material for this app, kept for future reference.
+[`HANDOFF.md`](HANDOFF.md) is the **initial reference handoff for this project, written in a
+different (earlier) chat thread** — the session that first designed and built the app in
+July 2026. It was carried over into this repo so the original material survives: the brief
+and how it evolved, the decisions and the reasoning behind them, the complete gym catalog
+taken from the real training program, the Corpo routine with the scraped source playlist,
+and the original generated-SVG figure system.
 
-| File | What it is |
-|---|---|
-| [`HANDOFF.md`](HANDOFF.md) | Full write-up of the session that first designed and built the app (July 2026): the brief and how it evolved, decisions and why, the complete gym catalog, the Corpo routine and its source playlist, and the original figure system. |
-| `reference/exercises-original.bundle` | Git bundle of the original history — commits `17c2194` (v1), `983c9d2` (v2) and `fb7d699` (adds HANDOFF.md). |
-| `reference/exercises-v2-snapshot.zip` | Plain-file snapshot of that same v2 state, no history. |
+The scraped **"Corpo" playlist listing (§5) is the part that exists nowhere else** — 87
+videos with titles, channels and durations. YouTube is usually unreachable from an agent
+session, so that listing cannot easily be regenerated. Keep it.
 
-The first two commits in the bundle are already part of this repo's history, so the
-archives are a convenience copy rather than the only source. The scraped **"Corpo"
-playlist listing in `HANDOFF.md` §5 is the one piece that exists nowhere else** — YouTube
-is often unreachable from an agent session, so keep it.
+The original code itself is **already in this repo's git history** — commits `17c2194`
+(v1) and `983c9d2` (v2) — so no separate bundle or zip archive is kept here; they were
+byte-for-byte duplicates of what git already stores.
 
-## What has changed since the handoff was written
+## What has changed since it was written
 
-`HANDOFF.md` describes the app as it was in July 2026. It is accurate for that snapshot but
-the app has moved on — read it as history, not as a description of the current code.
+`HANDOFF.md` is accurate for July 2026 and is left unedited, but the app has moved on.
+Read it as history, not as a description of the current code.
 
 - **It is deployed.** §8 ("Outstanding item: getting it onto GitHub") is resolved; the app
-  is live at https://gabrielom.github.io/exercises/ and pushed from this repo.
+  is live at https://gabrielom.github.io/exercises/.
 - **Sections** are now **Gym · Stretching · Calisthenics** — Push-ups and Pull-ups merged
   into Calisthenics.
 - **Figures** are no longer generated SVG pictograms. They are AI-illustrated (Gemini

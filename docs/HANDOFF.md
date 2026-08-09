@@ -1,5 +1,16 @@
 # Exercises — full project handoff
 
+> **Archived reference — do not read as current documentation.**
+> This is the **initial handoff, written in a different (earlier) chat thread** — the
+> session that first designed and built this app — and carried over here so the original
+> brief, decisions and source material are not lost. Everything below describes the app as
+> it stood in **July 2026**. The app has changed substantially since (figures, theme,
+> sections, routine structure) and it has long since been pushed and deployed, so the
+> "pending push" in §8 is resolved. See [`README.md`](README.md) in this folder for the
+> list of what has changed. The text below is left exactly as it was written.
+
+---
+
 > Complete reference export of the session that designed and built this app
 > (July 2026). Written so a fresh thread can pick up with zero context loss.
 > The app itself is finished and verified; only the push to GitHub is pending.

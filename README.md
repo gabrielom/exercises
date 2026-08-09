@@ -67,12 +67,13 @@ tools/optimize.mjs    png → transparent 768px WebP
 sw.js                 offline cache (bump VERSION to deploy updates)
 manifest.webmanifest  PWA manifest
 PLAN.html             project plan & full routine table
-docs/                 reference archive — original handoff, history bundle, snapshot
+docs/HANDOFF.md       initial reference handoff (from the original build thread)
 ```
 
 ## Reference
 
-[`docs/HANDOFF.md`](docs/HANDOFF.md) is the write-up of the session that first designed and
-built the app: the original brief, the decisions behind it, the full gym catalog and the
-scraped "Corpo" playlist the stretching routine came from. It describes the July 2026
-state — see [`docs/README.md`](docs/README.md) for what has changed since.
+[`docs/HANDOFF.md`](docs/HANDOFF.md) is the **initial handoff for this project, written in
+an earlier chat thread** — the session that first designed and built the app. It holds the
+original brief, the decisions behind it, the full gym catalog and the scraped "Corpo"
+playlist the stretching routine came from. It describes the July 2026 state and is kept
+unedited — see [`docs/README.md`](docs/README.md) for what has changed since.

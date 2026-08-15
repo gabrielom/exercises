@@ -126,39 +126,25 @@ main { max-width: 1180px; margin: 0 auto; }
 /* tab links carry 4px padding + 2px underline under their text, so their text
    sits ~3px above the flex row's center — lift the icon to match it */
 .chips .themebtn { margin-left: auto; flex: 0 0 auto; margin-bottom: 6px; }
-/* ————— exercise grid, grouped into série sections ————— */
-.ex-list {
-  padding: 2px var(--edge) 0;
-  display: flex; flex-direction: column; gap: 18px;
+.chips.sub { padding-top: 0; gap: 14px; }
+.chips.sub .chip { font-size: 12.5px; }
+
+/* ————— exercise grid ————— */
+.grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 18px 16px; padding: 4px var(--edge) 24px;
 }
-.series-head { display: flex; align-items: baseline; gap: 8px; padding: 0 2px 10px; }
-.series-name { font-size: 14px; font-weight: 700; }
-.series-focus { font-size: 12.5px; color: var(--muted); }
-.series-count {
-  margin-left: auto; flex: 0 0 auto;
-  font-size: 11px; font-weight: 600; color: var(--accent);
-  background: var(--accent-soft); border-radius: 999px; padding: 2px 9px;
-}
-.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px 14px; }
-@media (min-width: 768px) {
-  :root { --edge: 32px; }
-  .ex-list { gap: 26px; }
-  .grid { grid-template-columns: repeat(4, 1fr); gap: 22px 18px; }
-  .series-head { gap: 10px; padding: 0 2px 14px; }
-  .series-name { font-size: 18px; }
-  .series-focus { font-size: 15px; }
-  .series-count { font-size: 13px; padding: 3px 12px; }
-}
-@media (min-width: 1200px) {
-  .ex-list { max-width: 1180px; margin: 0 auto; gap: 28px; }
-  .grid { grid-template-columns: repeat(5, 1fr); }
-  .series-name { font-size: 17px; }
-  .series-focus { font-size: 14.5px; }
-  .series-count { font-size: 12.5px; }
+@media (min-width: 768px)  { :root { --edge: 32px; } .grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1200px) { .grid { grid-template-columns: repeat(5, 1fr); } }
+
+.group-head {
+  grid-column: 1 / -1;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); padding: 8px 2px 0;
 }
 .gcard {
   text-align: center;
-  display: flex; flex-direction: column; gap: 7px;
+  display: flex; flex-direction: column; gap: 5px;
   transition: transform .08s;
   cursor: pointer;
 }

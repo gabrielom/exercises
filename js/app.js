@@ -1,4 +1,4 @@
-import { CATS, GYM_GROUPS, STRETCH_GROUPS, EXERCISES, byId, imgFor } from './data.js';
+import { CATS, GYM_GROUPS, STRETCH_GROUPS, GROUP_FOCUS, EXERCISES, byId, imgFor } from './data.js';
 
 const SUBGROUPS = { gym: GYM_GROUPS, stretch: STRETCH_GROUPS };
 import * as store from './store.js';
@@ -21,7 +21,7 @@ store.init();
 const view = document.getElementById('view');
 const toastEl = document.getElementById('toast');
 
-const state = { tab: 'exercises', cat: 'all', group: 'all' };
+const state = { tab: 'exercises', cat: 'gym', hView: 'list', openDay: null };
 
 // ————— helpers —————
 
@@ -89,11 +89,7 @@ const TIME_STEP = 15; // seconds
 // ————— exercises grid —————
 
 function filteredList() {
-  let list = EXERCISES.filter(e => state.cat === 'all' || e.cat === state.cat);
-  if (SUBGROUPS[state.cat] && state.group !== 'all') {
-    list = list.filter(e => e.group === state.group);
-  }
-  return list;
+  return EXERCISES.filter(e => e.cat === state.cat);
 }
 
 function gcardHTML(ex) {
@@ -141,69 +137,39 @@ function themeBtnHTML() {
   </button>`;
 }
 
-// Horizontal scroll of the filter bars is remembered across re-renders so that
-// toggling e.g. Série G ⇄ H doesn't snap the sub-group bar back to the start.
-// The sub-group bar is keyed by category since each category has its own set.
-const barScroll = { main: 0, sub: {} };
-// Last sub-group chosen per category, so returning to Gym restores the series
-// you were on instead of resetting to "All groups".
-const groupMem = {};
-
-function subchipsInner() {
+// Build the grid as stacked série sections — each group gets a header row
+// (name · focus · count chip) and its own card grid. Categories without series
+// (Calisthenics) render a single plain grid.
+function sectionsHTML() {
   const defs = SUBGROUPS[state.cat];
-  return defs
-    ? [['all', 'All groups'], ...Object.entries(defs)]
-        .map(([id, label]) => `<button class="chip ${state.group === id ? 'on' : ''}" data-group="${id}">${label}</button>`).join('')
-    : '';
-}
-
-function gridCells() {
-  const defs = SUBGROUPS[state.cat];
-  let cells = '', lastGroup = null;
-  for (const ex of filteredList()) {
-    if (defs && state.group === 'all' && ex.group !== lastGroup) {
-      lastGroup = ex.group;
-      cells += `<div class="group-head">${defs[ex.group]}</div>`;
-    }
-    cells += gcardHTML(ex);
+  const all = filteredList();
+  if (!defs) return `<div class="grid">${all.map(gcardHTML).join('')}</div>`;
+  let html = '';
+  for (const g of Object.keys(defs)) {
+    const items = all.filter(e => e.group === g);
+    if (!items.length) continue;
+    const focus = state.cat === 'gym' && GROUP_FOCUS[g] ? `<span class="series-focus">${GROUP_FOCUS[g]}</span>` : '';
+    html += `<section class="series">
+      <div class="series-head"><span class="series-name">${defs[g]}</span>${focus}<span class="series-count">${items.length}</span></div>
+      <div class="grid">${items.map(gcardHTML).join('')}</div>
+    </section>`;
   }
-  return cells;
+  return html;
 }
 
 function renderExercises() {
-  const prevSub = view.querySelector('.chips.sub');
-  if (prevSub && renderExercises.lastCat != null) barScroll.sub[renderExercises.lastCat] = prevSub.scrollLeft;
-  const prevMain = view.querySelector('.topbar > .chips:not(.sub)');
-  if (prevMain) barScroll.main = prevMain.scrollLeft;
-
+  const chips = Object.entries(CATS)
+    .map(([id, label]) => `<button class="chip ${state.cat === id ? 'on' : ''}" data-cat="${id}">${label}</button>`).join('');
   const topbar = view.querySelector('.topbar');
-  const grid = view.querySelector('.grid');
-  if (topbar && grid) {
-    // Update in place — the filter bar stays put (no full-page rebuild), only
-    // the active tab and the grid change, so switching screens is seamless.
-    topbar.querySelectorAll('.chips:not(.sub) .chip[data-cat]').forEach(c =>
-      c.classList.toggle('on', c.dataset.cat === state.cat));
-    let sub = topbar.querySelector('.chips.sub');
-    if (SUBGROUPS[state.cat]) {
-      if (sub) sub.innerHTML = subchipsInner();
-      else topbar.insertAdjacentHTML('beforeend', `<div class="chips sub">${subchipsInner()}</div>`);
-    } else if (sub) {
-      sub.remove();
-    }
-    grid.innerHTML = gridCells();
+  const list = view.querySelector('.ex-list');
+  if (topbar && list) {
+    // Update in place — the tab bar keeps its node, only the active tab and the
+    // section list change, so switching categories stays seamless.
+    topbar.querySelectorAll('.chip[data-cat]').forEach(c => c.classList.toggle('on', c.dataset.cat === state.cat));
+    list.innerHTML = sectionsHTML();
   } else {
-    const chips = [['all', 'All'], ...Object.entries(CATS)]
-      .map(([id, label]) => `<button class="chip ${state.cat === id ? 'on' : ''}" data-cat="${id}">${label}</button>`).join('');
-    const subchips = SUBGROUPS[state.cat] ? `<div class="chips sub">${subchipsInner()}</div>` : '';
-    view.innerHTML = `<div class="topbar"><div class="chips">${chips}${themeBtnHTML()}</div>${subchips}</div><div class="grid">${gridCells()}</div>`;
+    view.innerHTML = `<div class="topbar"><div class="chips">${chips}${themeBtnHTML()}</div></div><div class="ex-list">${sectionsHTML()}</div>`;
   }
-
-  // restore the remembered scroll positions for the new bars
-  const newMain = view.querySelector('.topbar > .chips:not(.sub)');
-  if (newMain) newMain.scrollLeft = barScroll.main;
-  const newSub = view.querySelector('.chips.sub');
-  if (newSub) newSub.scrollLeft = barScroll.sub[state.cat] || 0;
-  renderExercises.lastCat = state.cat;
 }
 
 // ————— fullscreen player —————
@@ -464,6 +430,134 @@ function refreshWeight(ex) {
 
 // ————— history —————
 
+// ————— history derivations —————
+// Everything on the History screen is computed from the same append-only log
+// that the player and quick-log write; nothing extra is persisted.
+
+const dayMs = 86400000;
+const dateOf = d => { const [y, m, dd] = d.split('-').map(Number); return new Date(y, m - 1, dd); };
+
+function groupOf(exId) {
+  const ex = byId[exId];
+  if (!ex) return null;
+  const defs = SUBGROUPS[ex.cat];
+  return defs && ex.group ? defs[ex.group] : CATS[ex.cat];
+}
+// The label shown on a day row: whichever série most of that day's sets belong to.
+function dayGroupLabel(entries) {
+  const tally = {};
+  for (const e of entries) { const g = groupOf(e.ex); if (g) tally[g] = (tally[g] || 0) + 1; }
+  const best = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
+  return best ? best[0] : '';
+}
+function dayFocusLabel(entries) {
+  const tally = {};
+  for (const e of entries) {
+    const ex = byId[e.ex];
+    if (ex?.cat === 'gym' && GROUP_FOCUS[ex.group]) tally[GROUP_FOCUS[ex.group]] = (tally[GROUP_FOCUS[ex.group]] || 0) + 1;
+  }
+  const best = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
+  if (!best) return dayGroupLabel(entries);
+  return best[0].replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function byDayMap(log) {
+  const m = new Map();
+  for (const e of log) { if (!m.has(e.d)) m.set(e.d, []); m.get(e.d).push(e); }
+  return m;
+}
+
+// Consecutive logged days, counting back from today (a gap of one day is only
+// allowed at the very start, so "yesterday but not today" still shows a streak).
+function streakDays(days) {
+  const set = new Set(days);
+  let n = 0;
+  let cursor = new Date();
+  if (!set.has(store.localDate(cursor.getTime()))) {
+    cursor = new Date(cursor.getTime() - dayMs);
+    if (!set.has(store.localDate(cursor.getTime()))) return 0;
+  }
+  while (set.has(store.localDate(cursor.getTime()))) { n++; cursor = new Date(cursor.getTime() - dayMs); }
+  return n;
+}
+
+// Every time an exercise's logged weight differs from the previous time it was
+// logged, that's a weight change. Newest first.
+function weightChanges(log) {
+  const last = {};
+  const out = [];
+  for (const e of [...log].sort((a, b) => a.t - b.t)) {
+    if (!e.w) continue;
+    const prev = last[e.ex];
+    if (prev !== undefined && prev !== e.w) out.push({ ex: e.ex, from: prev, to: e.w, delta: e.w - prev, t: e.t, d: e.d });
+    last[e.ex] = e.w;
+  }
+  return out.reverse();
+}
+
+// 5 weeks × 7 days ending this week, Monday-first, bucketed into 4 heat levels.
+function heatCells(byDay) {
+  const today = new Date();
+  const dow = (today.getDay() + 6) % 7;              // 0 = Monday
+  const end = new Date(today.getTime() + (6 - dow) * dayMs); // Sunday of this week
+  const cells = [];
+  for (let i = 34; i >= 0; i--) {
+    const dt = new Date(end.getTime() - i * dayMs);
+    const key = store.localDate(dt.getTime());
+    const n = (byDay.get(key) || []).length;
+    cells.push({ key, n, future: dt > today, lvl: n === 0 ? 0 : n <= 3 ? 1 : n <= 8 ? 2 : 3 });
+  }
+  return cells;
+}
+
+// Per-exercise detail for one day: totals, the last six sessions' weights (for
+// the sparkline bars) and how the current weight compares with the one before.
+function dayDetail(log, d) {
+  const entries = (byDayMap(log).get(d) || []);
+  const perEx = new Map();
+  for (const e of entries) {
+    if (!perEx.has(e.ex)) perEx.set(e.ex, { sets: 0, reps: 0, secs: 0, w: 0 });
+    const a = perEx.get(e.ex);
+    a.sets++;
+    if (e.mode === 'reps') a.reps += e.v; else a.secs += e.v;
+    if (e.w) a.w = Math.max(a.w, e.w);
+  }
+  const rows = [];
+  for (const [exId, a] of perEx) {
+    // weight per session (day) for this exercise, oldest → newest, last 6
+    const sessions = [...byDayMap(log.filter(e => e.ex === exId)).entries()]
+      .sort((x, y) => (x[0] < y[0] ? -1 : 1))
+      .map(([day, es]) => ({ day, w: Math.max(0, ...es.map(e => e.w || 0)) }));
+    const upTo = sessions.filter(s => s.day <= d);
+    const bars = upTo.slice(-6);
+    const cur = bars.length ? bars[bars.length - 1].w : a.w;
+    // walk back to the session where the weight last changed
+    let delta = 0, sinceDay = upTo[0]?.day || d;
+    for (let i = upTo.length - 1; i > 0; i--) {
+      if (upTo[i].w !== upTo[i - 1].w) { delta = upTo[i].w - upTo[i - 1].w; sinceDay = upTo[i].day; break; }
+      sinceDay = upTo[i - 1].day;
+    }
+    rows.push({ exId, ...a, bars, cur, delta, sinceDay });
+  }
+  const volume = entries.reduce((t, e) => t + (e.mode === 'reps' ? e.v * (e.w || 0) : 0), 0);
+  return { entries, rows, volume };
+}
+
+function agoDay(d) {
+  const diff = Math.round((Date.now() - dateOf(d).getTime()) / dayMs);
+  if (diff <= 0) return 'today';
+  if (diff === 1) return 'yesterday';
+  if (diff < 7) return `${diff}d ago`;
+  if (diff < 30) return `${Math.round(diff / 7)}w ago`;
+  return `${Math.round(diff / 30)}mo ago`;
+}
+
+function deltaChip(delta) {
+  if (delta > 0) return `<span class="wchip up">+${+delta.toFixed(1)}</span>`;
+  if (delta < 0) return `<span class="wchip down">${+delta.toFixed(1)}</span>`;
+  return `<span class="wchip flat">±0</span>`;
+}
+
 function dayLabel(d) {
   const today = store.localDate();
   const yest = store.localDate(Date.now() - 86400000);
@@ -473,44 +567,143 @@ function dayLabel(d) {
   return new Date(y, m - 1, day).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+const ICON_GEAR = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>`;
+const ICON_CHEV = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>`;
+
+function historyEmpty() {
+  return `<div class="h-head"><h2 class="h-title">History</h2>
+      <div class="h-actions">${themeBtnHTML()}<button class="iconbtn" data-act="gear" aria-label="Data & sync">${ICON_GEAR}</button></div></div>
+    <div class="empty">No sets logged yet.<br>Open any exercise and tap <b>Done</b>, or run the Corpo routine.</div>`;
+}
+
 function renderHistory() {
   const log = store.getLog();
-  let body;
+  if (state.hView === 'gear') return renderGear();
+  if (state.hView === 'weights') return renderWeights(log);
+
   if (!log.length) {
-    body = `<div class="h-head"><h2 class="h-title">History</h2>${themeBtnHTML()}</div>
-      <div class="empty">No sets logged yet.<br>Open any exercise and tap <b>Done</b>, or run the Corpo routine.</div>`;
-  } else {
-    const byDay = new Map();
-    for (const e of log) {
-      if (!byDay.has(e.d)) byDay.set(e.d, new Map());
-      const dayMap = byDay.get(e.d);
-      if (!dayMap.has(e.ex)) dayMap.set(e.ex, { sets: 0, reps: 0, secs: 0, w: 0 });
-      const agg = dayMap.get(e.ex);
-      agg.sets += 1;
-      if (e.mode === 'reps') agg.reps += e.v; else agg.secs += e.v;
-      if (e.w) agg.w = Math.max(agg.w, e.w);
-    }
-    const days = [...byDay.keys()].sort().reverse();
-    const weekAgo = store.localDate(Date.now() - 6 * 86400000);
-    const week = log.filter(e => e.d >= weekAgo);
-    const weekSecs = week.filter(e => e.mode === 'time').reduce((a, e) => a + e.v, 0);
-    const weekReps = week.filter(e => e.mode === 'reps').reduce((a, e) => a + e.v, 0);
-    body = `
-      <div class="h-head"><h2 class="h-title">History</h2>${themeBtnHTML()}</div>
-      <p class="h-sub">Last 7 days · ${week.length} sets · ${weekReps} reps · ${Math.round(weekSecs / 60)} min</p>
-      ${days.map(d => `
-        <section class="day">
-          <h3>${dayLabel(d)}</h3>
-          <div class="rows">
-            ${[...byDay.get(d)].map(([exId, a]) => `
-              <div class="h-row">
-                <span>${byId[exId]?.name || exId}</span>
-                <span class="h-val">${a.sets}×${a.reps ? ` · ${a.reps} reps` : ''}${a.secs ? ` · ${fmtTime(a.secs)}` : ''}${a.w ? ` · ${a.w} kg` : ''}</span>
-              </div>`).join('')}
-          </div>
-        </section>`).join('')}`;
+    view.innerHTML = `<div class="history-wrap">${historyEmpty()}</div>`;
+    return;
   }
-  view.innerHTML = `<div class="history-wrap">${body}
+  const byDay = byDayMap(log);
+  const days = [...byDay.keys()].sort().reverse();
+  const streak = streakDays(days);
+  const weekAgo = store.localDate(Date.now() - 6 * dayMs);
+  const sessions = days.filter(d => d >= weekAgo).length;
+  const changes = weightChanges(log);
+  const added = changes.reduce((a, c) => a + c.delta, 0);
+  const cells = heatCells(byDay);
+
+  const tiles = `
+    <div class="h-tiles">
+      <div class="h-tile"><b class="sage">${streak}</b><span>day streak</span></div>
+      <div class="h-tile"><b>${sessions}</b><span>sessions this week</span></div>
+      <button class="h-tile link" data-act="weights">
+        <b class="sage">${added >= 0 ? '+' : ''}${+added.toFixed(1)}</b><span>kg · weight changes</span>
+        <i class="t-chev">${ICON_CHEV}</i>
+      </button>
+    </div>`;
+
+  const heat = `
+    <div class="h-card heat">
+      <div class="heat-top"><span>Last 5 weeks</span>
+        <span class="heat-legend">less<i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i>more</span>
+      </div>
+      <div class="heat-heads">${['M','T','W','T','F','S','S'].map(x => `<span>${x}</span>`).join('')}</div>
+      <div class="heat-grid">${cells.map(c => `<i class="l${c.lvl}${c.future ? ' fut' : ''}" title="${c.key} · ${c.n} sets"></i>`).join('')}</div>
+    </div>`;
+
+  const rows = days.slice(0, 30).map(d => {
+    const es = byDay.get(d);
+    const reps = es.filter(e => e.mode === 'reps').reduce((a, e) => a + e.v, 0);
+    const open = state.openDay === d;
+    if (!open) {
+      return `<button class="d-row" data-day="${d}">
+        <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} sets${reps ? ` · ${reps} reps` : ''}</small></span>
+        <span class="d-chip">${dayGroupLabel(es)}</span>
+        <i class="d-chev">${ICON_CHEV}</i>
+      </button>`;
+    }
+    const det = dayDetail(log, d);
+    const exRows = det.rows.map(r => {
+      const max = Math.max(1, ...r.bars.map(b => b.w));
+      const bars = r.bars.map(b => `<i style="height:${Math.max(12, Math.round((b.w / max) * 100))}%"></i>`).join('');
+      return `<div class="x-row">
+        <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets}×${r.reps ? ` · ${r.reps} reps` : ''}${r.secs ? ` · ${fmtTime(r.secs)}` : ''}</small></span>
+        <span class="x-bars">${bars}</span>
+        <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}${r.cur ? `<small>${deltaChip(r.delta)} · ${agoDay(r.sinceDay)}</small>` : ''}</span>
+      </div>`;
+    }).join('');
+    return `<div class="d-open">
+      <button class="d-row head" data-day="${d}">
+        <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} sets${reps ? ` · ${reps} reps` : ''}</small></span>
+        <span class="d-chip strong">${dayGroupLabel(es)}</span>
+        <i class="d-chev open">${ICON_CHEV}</i>
+      </button>
+      <div class="d-focus"><span>${dayFocusLabel(es)}</span><b>${det.volume ? `${det.volume.toLocaleString()} kg` : ''}</b></div>
+      ${exRows}
+    </div>`;
+  }).join('');
+
+  view.innerHTML = `<div class="history-wrap">
+    <div class="h-head"><h2 class="h-title">History</h2>
+      <div class="h-actions">${themeBtnHTML()}<button class="iconbtn" data-act="gear" aria-label="Data & sync">${ICON_GEAR}</button></div>
+    </div>
+    ${tiles}
+    ${heat}
+    <div class="h-lab">Recent</div>
+    <div class="h-card list">${rows}</div>
+  </div>`;
+}
+
+function renderWeights(log) {
+  const changes = weightChanges(log);
+  const up = changes.filter(c => c.delta > 0).length;
+  const down = changes.filter(c => c.delta < 0).length;
+  const added = changes.reduce((a, c) => a + c.delta, 0);
+  const exCount = new Set(changes.map(c => c.ex)).size;
+  const since = changes.length
+    ? dateOf(changes[changes.length - 1].d).toLocaleDateString(undefined, { month: 'long' })
+    : '';
+  const byMonth = new Map();
+  for (const c of changes) {
+    const k = c.d.slice(0, 7);
+    if (!byMonth.has(k)) byMonth.set(k, []);
+    byMonth.get(k).push(c);
+  }
+  const groups = [...byMonth.entries()].map(([k, list]) => {
+    const [y, m] = k.split('-').map(Number);
+    const title = new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    return `<div class="h-lab">${title}</div>
+      <div class="h-card list">${list.map(c => `
+        <div class="w-row">
+          <span class="x-main"><b>${byId[c.ex]?.name || c.ex}</b><small>${agoDay(c.d).replace(/^t/, 'T')} · ${groupOf(c.ex) || ''}</small></span>
+          <span class="x-w"><b>${c.from} → ${c.to} kg</b><small>${deltaChip(c.delta)}</small></span>
+        </div>`).join('')}</div>`;
+  }).join('');
+
+  view.innerHTML = `<div class="history-wrap">
+    <div class="h-head back">
+      <button class="iconbtn" data-act="h-back" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2 class="h-title sm">Weight changes</h2>
+    </div>
+    ${changes.length ? `<div class="h-card sum">
+      <span class="sum-l"><b>${added >= 0 ? '+' : ''}${+added.toFixed(1)}</b><small>kg added${since ? ` since ${since}` : ''}</small></span>
+      <span class="sum-r"><b>${up} up · ${down} down</b><small>across ${exCount} exercise${exCount === 1 ? '' : 's'}</small></span>
+    </div>${groups}` : `<div class="empty">No weight changes logged yet.</div>`}
+  </div>`;
+}
+
+function renderGear() {
+  view.innerHTML = `<div class="history-wrap">
+    <div class="h-head back">
+      <button class="iconbtn" data-act="h-back" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2 class="h-title sm">Data &amp; sync</h2>
+    </div>
     <div class="databar">
       <button data-act="export">Export</button>
       <button data-act="import">Import</button>
@@ -562,10 +755,10 @@ function render() {
 // ————— events —————
 
 // Remember the vertical scroll position of each screen — and of each Exercises
-// category / sub-group — so switching filters or tabs returns you to where you
-// were instead of snapping back to the top.
+// category — so switching categories or tabs returns you to where you were
+// instead of snapping back to the top.
 const scrollMem = {};
-const viewKey = () => (state.tab === 'exercises' ? `ex:${state.cat}:${state.group}` : state.tab);
+const viewKey = () => (state.tab === 'exercises' ? `ex:${state.cat}` : state.tab);
 let curScrollKey = viewKey();
 let restoringScroll = false;
 let restoreTimers = [];
@@ -600,22 +793,17 @@ document.querySelector('.tabbar').addEventListener('click', e => {
   const btn = e.target.closest('button[data-tab]');
   if (!btn) return;
   saveScroll();
+  if (btn.dataset.tab === 'history' && state.tab !== 'history') { state.hView = 'list'; state.openDay = null; }
   state.tab = btn.dataset.tab;
   render();
   restoreScroll();
 });
 
 view.addEventListener('click', e => {
-  const chip = e.target.closest('.chip');
+  const chip = e.target.closest('.chip[data-cat]');
   if (chip) {
     saveScroll();
-    if (chip.dataset.cat) {
-      state.cat = chip.dataset.cat;
-      state.group = groupMem[state.cat] || 'all'; // resume this category's last sub-group
-    } else if (chip.dataset.group) {
-      state.group = chip.dataset.group;
-      groupMem[state.cat] = state.group;          // remember it for next time
-    }
+    state.cat = chip.dataset.cat;
     renderExercises();
     restoreScroll();
     return;
@@ -628,8 +816,18 @@ view.addEventListener('click', e => {
     openPlayer(list, list.indexOf(card.dataset.ex));
     return;
   }
+  // history: expand/collapse a day (single open at a time)
+  const dayRow = e.target.closest('[data-day]');
+  if (dayRow) {
+    state.openDay = state.openDay === dayRow.dataset.day ? null : dayRow.dataset.day;
+    renderHistory();
+    return;
+  }
   const actBtn = e.target.closest('button[data-act]');
   if (!actBtn) return;
+  const act = actBtn.dataset.act;
+  if (act === 'gear' || act === 'weights') { state.hView = act === 'gear' ? 'gear' : 'weights'; renderHistory(); scrollTo(0, 0); return; }
+  if (act === 'h-back') { state.hView = 'list'; renderHistory(); scrollTo(0, 0); return; }
   if (actBtn.dataset.act === 'export') doExport();
   else if (actBtn.dataset.act === 'import') view.querySelector('#importFile').click();
   else if (actBtn.dataset.act === 'reset') doReset();

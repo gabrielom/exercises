@@ -46,6 +46,33 @@ function loadProgress() {
 }
 let progress = loadProgress();
 
+// Completed séries in the current cycle: { [seriesId]: finishedAt }. Kept apart
+// from `progress` (which only holds in-flight state) so the overview can show
+// "Complete · 5d ago" and count holds done this cycle. Clears once all four are
+// done and a new série is started.
+let doneMap = store.get('routineDone') || {};
+
+function persistDone() { store.set('routineDone', doneMap); }
+
+function cycleComplete() { return SERIES.every(s => doneMap[s.id]); }
+
+// Holds finished this cycle: a completed série counts all of its slots, an
+// in-flight one counts the slots already passed.
+function holdsDone(s) {
+  if (doneMap[s.id]) return s.slots.length;
+  const p = progress[s.id];
+  return p ? p.i : 0;
+}
+
+function agoShort(ts) {
+  const d = Math.floor((Date.now() - ts) / 86400000);
+  if (d <= 0) return 'today';
+  if (d === 1) return 'yesterday';
+  if (d < 7) return `${d}d ago`;
+  if (d < 30) return `${Math.round(d / 7)}w ago`;
+  return `${Math.round(d / 30)}mo ago`;
+}
+
 function persist() {
   if (active && st) {
     progress[active.id] = { i: st.i, phase: st.phase, remaining: Math.round(currentRemaining()) };
@@ -143,6 +170,8 @@ function advance() {
 }
 
 function startSeries(series, at = 0, phase = 'hold', remaining = null) {
+  // Starting anything once all four séries are done begins a fresh cycle.
+  if (cycleComplete()) { doneMap = {}; persistDone(); }
   active = series;
   st = { i: Math.min(Math.max(at, 0), series.slots.length - 1), phase, remaining: ROUTINE.hold, running: false };
   if (remaining !== null) {
@@ -186,6 +215,8 @@ function complete() {
   dropWakeLock();
   delete progress[done.id];
   store.set('routine', progress);
+  doneMap[done.id] = Date.now();
+  persistDone();
   navigator.vibrate?.([80, 80, 80, 80, 200]);
   beep([[660, 0.15], [880, 0.15], [1100, 0.3]]);
   const idx = SERIES.indexOf(done);
@@ -210,46 +241,90 @@ function sideBadge(side) {
   return side ? `<span class="pl-side">${side}</span>` : '';
 }
 
+// "1h 15" — compact hours+minutes for the cycle's remaining work.
+function fmtLeft(totalS) {
+  const m = Math.round(totalS / 60);
+  return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}` : `${m} min`;
+}
+
 function renderOverview() {
   if (!container) return;
+  const cycleHolds = SERIES.reduce((a, s) => a + holdsDone(s), 0);
+  const left = (ALL_SLOTS - cycleHolds) * SLOT_SECONDS;
+
+  const segs = SERIES.map(s => {
+    const pct = Math.round((holdsDone(s) / s.slots.length) * 100);
+    return `<span class="cy-seg"><i style="width:${pct}%"></i></span>`;
+  }).join('');
+
   const cards = SERIES.map(s => {
+    const finished = doneMap[s.id];
     const saved = progress[s.id];
-    const rows = s.blocks.map(bn => {
-      const b = ROUTINE.blocks.find(x => x.name === bn);
-      const n = b.items.reduce((a, [, sd]) => a + (sd === 'LR' ? 2 : 1), 0);
-      return `<div class="block-row"><span class="b-name">${bn}</span><span class="b-count">${n} × ${ROUTINE.hold}s</span></div>`;
-    }).join('');
+    const done = holdsDone(s);
+    const pct = Math.round((done / s.slots.length) * 100);
+    const status = finished
+      ? `<span class="sc-status done">Complete · ${agoShort(finished)}</span>`
+      : saved
+        ? `<span class="sc-status">${done} of ${s.slots.length} holds</span>`
+        : `<span class="sc-status">Not started</span>`;
+    const action = finished
+      ? `<button class="sc-act ghost" data-r="start" data-s="${s.id}">Redo</button>`
+      : `<button class="sc-act" data-r="${saved ? 'resume' : 'start'}" data-s="${s.id}">${saved ? 'Resume' : 'Start'}</button>`;
     return `
-      <div class="series-card">
-        <div class="s-head">
-          <span class="s-name">${s.name}</span>
-          <span class="s-meta">${s.slots.length} holds · ${fmtMins(s)}</span>
+      <div class="sc ${finished ? 'is-done' : ''}">
+        <div class="sc-head">
+          <span class="sc-name">${s.name}</span>
+          <span class="sc-meta">${s.slots.length} holds · ${fmtMins(s)}</span>
         </div>
-        ${rows}
-        ${s.tip ? `<p class="s-tip">${s.tip}</p>` : ''}
-        <div class="s-actions">
-          <button class="bigbtn" data-r="${saved ? 'resume' : 'start'}" data-s="${s.id}">
-            ${saved ? `Resume · ${saved.i + 1}/${s.slots.length}` : 'Start'}
-          </button>
-          ${saved ? `<button class="bigbtn ghost" data-r="start" data-s="${s.id}">Restart</button>` : ''}
-        </div>
+        <div class="sc-bar"><i style="width:${pct}%"></i></div>
+        <div class="sc-foot">${status}${action}</div>
       </div>`;
   }).join('');
+
   container.innerHTML = `
     <div class="routine-wrap">
-      <div class="r-hero">
+      <div class="r-head">
         <h2>${ROUTINE.name}</h2>
-        <p class="tagline">${ROUTINE.tagline}</p>
-        <div class="r-stats">
-          <span><b>4</b> series</span>
-          <span><b>${ALL_SLOTS}</b> holds</span>
-          <span><b>${ROUTINE.hold}s</b> + ${ROUTINE.rest}s rest</span>
-          <span><b>2h00</b> in total</span>
-        </div>
+        <span class="r-total">2h00 · ${ALL_SLOTS} holds</span>
       </div>
-      ${cards}
+      <p class="r-tagline">${ROUTINE.tagline}</p>
+      <div class="cycle">
+        <div class="cy-top">
+          <span class="cy-count"><b>${cycleHolds}</b> of ${ALL_SLOTS} holds this cycle</span>
+          <span class="cy-left">${fmtLeft(left)} left</span>
+        </div>
+        <div class="cy-bar">${segs}</div>
+      </div>
+      <div class="sc-grid">${cards}</div>
       <p class="r-src">Built from the “Corpo” playlist — @gabriel_om. Every hold is logged to History automatically.</p>
     </div>`;
+}
+
+const RING_R = 78;
+const RING_C = 2 * Math.PI * RING_R;
+const phaseTotal = () => (st.phase === 'hold' ? ROUTINE.hold : ROUTINE.rest);
+// Ring depletes as the phase runs down: full arc at the start, empty at zero.
+const ringOffset = () => RING_C * (1 - Math.max(0, currentRemaining()) / phaseTotal());
+
+// Current slot plus the next five, for the up-next rail.
+function railHTML() {
+  const upcoming = active.slots.slice(st.i, st.i + 6);
+  const tiles = upcoming.map((slot, k) => {
+    const ex = byId[slot.ex];
+    const now = k === 0;
+    // The side sits in its own span so the ellipsis eats the name, never the L/R.
+    const label = now ? 'Now' : ex.name;
+    const side = slot.side ? `<b>${now ? '· ' : ''}${slot.side}</b>` : '';
+    return `<div class="rail-item ${now ? 'now' : ''}">
+      <div class="rail-tile"><img src="${imgFor(ex.id)}" alt="" loading="lazy"></div>
+      <span class="rail-cap"><span>${label}</span>${side}</span>
+    </div>`;
+  }).join('');
+  const left = active.slots.length - st.i - 1;
+  return `<div class="rp-rail">
+    <div class="rail-lab"><span>Up next</span><span>${left} hold${left === 1 ? '' : 's'} left</span></div>
+    <div class="rail-grid">${tiles}</div>
+  </div>`;
 }
 
 function renderPlayer() {
@@ -258,37 +333,50 @@ function renderPlayer() {
   const slot = active.slots[st.i];
   const ex = byId[slot.ex];
   const isHold = st.phase === 'hold';
-  const next = active.slots[st.i + 1];
-  const nextEx = next ? byId[next.ex] : null;
   container.innerHTML = `
-    <div class="routine-wrap player">
-      <div class="pl-block">${active.name} · ${slot.block} · ${st.i + 1}/${active.slots.length}</div>
-      <div class="pl-name">${ex.name}${sideBadge(slot.side)}</div>
-      <p class="pl-cue">${ex.cue || ''}</p>
-      <div class="pl-fig"><img src="${imgFor(ex.id)}" alt=""></div>
-      <div class="pl-phase ${isHold ? '' : 'rest'}">${isHold ? 'Hold' : 'Rest'}</div>
-      <div class="pl-clock" id="pClock">${fmtTime(currentRemaining())}</div>
-      <p class="pl-next">${isHold
-        ? '&nbsp;'
-        : (nextEx ? `Next · <b>${nextEx.name}${next.side ? ' ' + next.side : ''}</b>` : 'Last one — finish strong')}</p>
-      <div class="progress"><i id="pBar" style="width:${(elapsedSeconds() / TOTAL) * 100}%"></i></div>
-      <div class="pl-meta"><span>${slot.block}</span><span id="pRem">−${fmtLong(TOTAL - elapsedSeconds())}</span></div>
-      <div class="pl-controls">
-        <button class="ctl" data-r="back" aria-label="Previous">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
-        </button>
-        <button class="ctl primary" data-r="playpause" aria-label="${st.running ? 'Pause' : 'Resume'}">
-          ${st.running
-            ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>'
-            : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>'}
-        </button>
-        <button class="ctl" data-r="skip" aria-label="Skip">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
-        </button>
-        <button class="ctl" data-r="exit" aria-label="Exit">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
+    <div class="routine-wrap rplayer">
+      <div class="rp-main">
+        <div class="rp-panel">
+          <div class="rp-slotline">
+            <span>${active.name.replace('Série ', 'Série ')} · ${st.i + 1}/${active.slots.length}</span>
+            <span id="pRem">−${fmtLong(TOTAL - elapsedSeconds())}</span>
+          </div>
+          <div class="rp-fig"><img src="${imgFor(ex.id)}" alt=""></div>
+          <div class="rp-sess"><i id="pBar" style="width:${(elapsedSeconds() / TOTAL) * 100}%"></i></div>
+        </div>
+        <div class="rp-side">
+          <div class="rp-name">${ex.name}${sideBadge(slot.side)}</div>
+          <p class="rp-cue">${ex.cue || ''}</p>
+          <div class="rp-ring">
+            <svg viewBox="0 0 180 180" aria-hidden="true">
+              <circle class="rr-track" cx="90" cy="90" r="${RING_R}"></circle>
+              <circle class="rr-arc" id="pArc" cx="90" cy="90" r="${RING_R}"
+                style="stroke-dasharray:${RING_C};stroke-dashoffset:${ringOffset()}"></circle>
+            </svg>
+            <div class="rp-ring-in">
+              <span class="rp-clock" id="pClock">${fmtTime(currentRemaining())}</span>
+              <span class="rp-phase ${isHold ? '' : 'rest'}" id="pPhase">${isHold ? 'Hold' : 'Rest'}</span>
+            </div>
+          </div>
+          <div class="rp-ctl">
+            <button class="rctl" data-r="back" aria-label="Previous">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+            </button>
+            <button class="rctl primary" data-r="playpause" aria-label="${st.running ? 'Pause' : 'Resume'}">
+              ${st.running
+                ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>'}
+            </button>
+            <button class="rctl" data-r="skip" aria-label="Skip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <button class="rctl" data-r="exit" aria-label="Exit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+        </div>
       </div>
+      ${railHTML()}
     </div>`;
 }
 
@@ -297,6 +385,8 @@ function updateClock() {
   if (!clock) return;
   const TOTAL = seriesSeconds(active);
   clock.textContent = fmtTime(Math.ceil(currentRemaining()));
+  const arc = container.querySelector('#pArc');
+  if (arc) arc.style.strokeDashoffset = ringOffset();
   const bar = container.querySelector('#pBar');
   if (bar) bar.style.width = `${(elapsedSeconds() / TOTAL) * 100}%`;
   const rem = container.querySelector('#pRem');

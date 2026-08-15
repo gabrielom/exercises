@@ -651,6 +651,7 @@ function historyEmpty() {
 }
 
 function renderHistory() {
+  resetSwipe();
   const log = store.getLog();
   if (state.hView === 'gear') return renderGear();
   if (state.hView === 'weights') return renderWeights(log);
@@ -830,7 +831,16 @@ const SWIPE_TRIGGER = 34; // drag past this and it snaps open
 let sw = null;           // { body, startX, startY, dx, dragging, decided }
 
 function closeSwipes(except) {
-  view.querySelectorAll('.swipe.open').forEach(el => { if (el !== except) el.classList.remove('open'); });
+  view.querySelectorAll('.swipe.open, .swipe.dragging').forEach(el => {
+    if (el !== except) el.classList.remove('open', 'dragging');
+  });
+}
+
+// A re-render throws away the row nodes, so any in-flight gesture must be
+// dropped with them — otherwise `sw.body` points at a detached element.
+function resetSwipe() {
+  if (sw) { sw.body.parentElement?.classList.remove('dragging'); sw = null; }
+  swipeJustDragged = false;
 }
 
 view.addEventListener('pointerdown', e => {
@@ -850,6 +860,7 @@ view.addEventListener('pointermove', e => {
     sw.decided = true;
     sw.dragging = true;
     closeSwipes(sw.body.parentElement);
+    sw.body.parentElement.classList.add('dragging');
   }
   sw.dx = Math.max(0, Math.min(dx, SWIPE_OPEN + 14)); // right-swipe only
   sw.body.style.transition = 'none';
@@ -865,6 +876,7 @@ function endSwipe() {
   if (!dragging) return;
   body.style.transition = '';
   body.style.transform = '';
+  body.parentElement.classList.remove('dragging');
   body.parentElement.classList.toggle('open', dx > SWIPE_TRIGGER);
   swipeJustDragged = true;  // the trailing click must not act on the row
 }
@@ -906,6 +918,7 @@ function deleteTarget(target) {
 // ————— render root —————
 
 function render() {
+  resetSwipe();
   if (state.tab !== 'routine') leaveRoutine();
   document.querySelectorAll('.tabbar button').forEach(b =>
     b.classList.toggle('on', b.dataset.tab === state.tab));
@@ -949,6 +962,7 @@ function restoreScroll() {
 addEventListener('scroll', () => {
   document.querySelector('.topbar')?.classList.toggle('stuck', scrollY > 4);
   saveScroll();
+  if (!sw && view.querySelector('.swipe.open')) closeSwipes();
 }, { passive: true });
 
 document.querySelector('.tabbar').addEventListener('click', e => {

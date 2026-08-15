@@ -500,17 +500,19 @@ img[src^="img/gen/"] { border-radius: 18px; }
 
 /* swipe-to-delete — drag a history row right to reveal the bin */
 .swipe { position: relative; overflow: hidden; touch-action: pan-y; }
+/* Only rendered while the row is open or being dragged. Keeping a button behind
+   every row instead let it bleed through the clip during scroll on iOS. */
 .swipe-del {
   position: absolute; left: 0; top: 0; bottom: 0; width: 76px;
-  display: grid; place-items: center;
+  display: none; place-items: center;
   background: var(--danger); color: #f7f2f0;
 }
+.swipe.open .swipe-del, .swipe.dragging .swipe-del { display: grid; }
 .swipe-del svg { width: 19px; height: 19px; }
 .swipe-body {
   position: relative;
   background: var(--card);
   transition: transform .18s ease;
-  will-change: transform;
 }
 .d-open .swipe-body, .x-row { background: var(--day-body); }
 .swipe.open .swipe-body { transform: translateX(76px); }

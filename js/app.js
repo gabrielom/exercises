@@ -79,7 +79,12 @@ function weightFor(ex) {
   return (w === undefined || w === null) ? ex.weight : w;
 }
 function setWeight(ex, w) {
-  store.setPref(ex.id, { weight: Math.max(0, Math.min(999, Math.round(w * 2) / 2)) });
+  const from = weightFor(ex);
+  const to = Math.max(0, Math.min(999, Math.round(w * 2) / 2));
+  store.setPref(ex.id, { weight: to });
+  // Changing the weight is the change — it counts whether or not a set gets
+  // logged that day.
+  store.logWeightChange(ex.id, from, to);
 }
 const WEIGHT_STEP = 2.5; // one plate-ish increment
 
@@ -524,16 +529,27 @@ function streakDays(days) {
   return n;
 }
 
-// Every time an exercise's logged weight differs from the previous time it was
-// logged, that's a weight change. Newest first.
-function weightChanges(log) {
+// Two things tell us what an exercise weighed at a point in time: a weight the
+// user edited, and the weight carried by a logged set. Both are treated as
+// observations on one timeline, and a change is emitted wherever consecutive
+// observations differ — so editing a weight counts on its own, and logging a
+// set at that same weight afterwards doesn't repeat it. Newest first.
+function weightChanges(log, wlog = store.getWeightLog()) {
+  const obs = [];
+  for (const e of log) if (e.w) obs.push({ t: e.t, d: e.d, ex: e.ex, w: e.w });
+  for (const e of wlog) obs.push({ t: e.t, d: e.d, ex: e.ex, w: e.to, from: e.from, edit: true });
+  obs.sort((a, b) => a.t - b.t);
+
   const last = {};
   const out = [];
-  for (const e of [...log].sort((a, b) => a.t - b.t)) {
-    if (!e.w) continue;
-    const prev = last[e.ex];
-    if (prev !== undefined && prev !== e.w) out.push({ ex: e.ex, from: prev, to: e.w, delta: e.w - prev, t: e.t, d: e.d });
-    last[e.ex] = e.w;
+  for (const o of obs) {
+    // An edit knows what it moved from, so it can be the first thing we ever
+    // saw for an exercise; a logged set only establishes a baseline.
+    const prev = last[o.ex] ?? o.from;
+    if (prev !== undefined && prev !== o.w) {
+      out.push({ ex: o.ex, from: prev, to: o.w, delta: o.w - prev, t: o.t, d: o.d, edit: o.edit });
+    }
+    last[o.ex] = o.w;
   }
   return out.reverse();
 }
@@ -607,7 +623,9 @@ function dayDetail(log, d) {
 }
 
 function agoDay(d) {
-  const diff = Math.round((Date.now() - dateOf(d).getTime()) / dayMs);
+  // Midnight to midnight — measuring from *now* made anything after midday
+  // today round up to "yesterday".
+  const diff = Math.round((dateOf(store.localDate()).getTime() - dateOf(d).getTime()) / dayMs);
   if (diff <= 0) return 'today';
   if (diff === 1) return 'yesterday';
   if (diff < 7) return `${diff}d ago`;
@@ -755,7 +773,7 @@ function renderWeights(log) {
     const [y, m] = k.split('-').map(Number);
     const title = new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
     return `<div class="h-lab">${title}</div>
-      <div class="h-card list">${list.map(c => swipeRow(`ex:${c.d}:${c.ex}`, `
+      <div class="h-card list">${list.map(c => swipeRow(`${c.edit ? 'wc' : 'ex'}:${c.d}:${c.ex}`, `
         <div class="w-row">
           <span class="x-main"><b>${byId[c.ex]?.name || c.ex}</b><small>${agoDay(c.d).replace(/^t/, 'T')} · ${groupOf(c.ex) || ''}</small></span>
           <span class="x-w"><b>${c.from} → ${c.to} kg</b><small>${deltaChip(c.delta)}</small></span>
@@ -900,19 +918,32 @@ view.addEventListener('click', e => {
   }
 }, true);
 
-// "day:<date>" removes that day's sets; "ex:<date>:<id>" removes one exercise's.
+// "day:<date>" removes that day's sets, "ex:<date>:<id>" one exercise's, and
+// "wc:<date>:<id>" a recorded weight change (which has no sets behind it).
 function deleteTarget(target) {
   const [kind, d, exId] = target.split(':');
+  const name = byId[exId]?.name || exId;
+
+  if (kind === 'wc') {
+    const removed = store.deleteWeightChanges(e => e.d === d && e.ex === exId);
+    if (!removed.length) return;
+    navigator.vibrate?.(14);
+    renderHistory();
+    toast(`Deleted · ${name}`, () => { store.restoreWeightChanges(removed); renderHistory(); });
+    return;
+  }
+
   const pred = kind === 'day'
     ? e => e.d === d
     : e => e.d === d && e.ex === exId;
   const removed = store.deleteEntries(pred);
   if (!removed.length) return;
-  const what = kind === 'day' ? dayLabel(d) : (byId[exId]?.name || exId);
   navigator.vibrate?.(14);
   if (kind === 'day' && state.openDay === d) state.openDay = null;
   renderHistory();
-  toast(`Deleted · ${what}`, () => { store.restoreEntries(removed); renderHistory(); });
+  toast(`Deleted · ${kind === 'day' ? dayLabel(d) : name}`, () => {
+    store.restoreEntries(removed); renderHistory();
+  });
 }
 
 // ————— render root —————

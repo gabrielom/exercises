@@ -12,7 +12,7 @@
 // device's localStorage and is deliberately excluded from export backups.
 
 import * as store from './store.js';
-import { logKey } from './store.js';
+import { logKey, weightKey } from './store.js';
 
 const FILE = 'exercises-sync.json';
 const API = 'https://api.github.com';
@@ -71,6 +71,18 @@ function mergeLogs(a, b) {
   return [...seen.values()].sort((x, y) => x.t - y.t);
 }
 
+// Weight records are keyed by exercise + day, so the newest write for a given
+// day wins rather than both devices' versions surviving the union.
+function mergeWeights(a, b) {
+  const best = new Map();
+  for (const e of [...a, ...b]) {
+    const k = weightKey(e);
+    const cur = best.get(k);
+    if (!cur || (e.t || 0) > (cur.t || 0)) best.set(k, e);
+  }
+  return [...best.values()].sort((x, y) => x.t - y.t);
+}
+
 function mergePrefs(local, remote) {
   const out = { ...remote };
   for (const [id, p] of Object.entries(local)) {
@@ -85,6 +97,8 @@ function payload() {
     log: store.get('log', []),
     prefs: store.get('prefs', {}),
     deleted: store.get('deleted', []),
+    wlog: store.get('wlog', []),
+    wdeleted: store.get('wdeleted', []),
   };
 }
 
@@ -114,12 +128,21 @@ export async function syncNow() {
     const prefs = mergePrefs(store.get('prefs', {}), remote.prefs || {});
     const pulled = log.length - localLog.length;
 
+    const wdeleted = [...new Set([...store.get('wdeleted', []), ...(remote.wdeleted || [])])];
+    const wDelSet = new Set(wdeleted);
+    const wlog = mergeWeights(store.get('wlog', []), remote.wlog || [])
+      .filter(e => !wDelSet.has(weightKey(e)));
+
     store.set('log', log);
     store.set('prefs', prefs);
     store.set('deleted', deleted);
+    store.set('wlog', wlog);
+    store.set('wdeleted', wdeleted);
 
     const changed = log.length !== (remote.log || []).length
       || deleted.length !== (remote.deleted || []).length
+      || wlog.length !== (remote.wlog || []).length
+      || wdeleted.length !== (remote.wdeleted || []).length
       || JSON.stringify(prefs) !== JSON.stringify(remote.prefs || {});
     if (changed) {
       await gh(`/gists/${c.gistId}`, {

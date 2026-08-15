@@ -107,6 +107,55 @@ export function todayFor(exId) {
   return getLog().filter(e => e.ex === exId && e.d === today);
 }
 
+// ————— weight changes —————
+// Editing a weight is worth remembering even on a day nothing was logged, so it
+// gets its own record rather than being inferred from the sets log. One record
+// per exercise per day (repeated taps on +/− collapse into it), which also
+// makes it a clean last-write-wins key for sync.
+
+export const weightKey = e => `${e.ex}|${e.d}`;
+
+export function getWeightLog() { return get('wlog', []); }
+
+export function logWeightChange(exId, from, to) {
+  if (from === to || from === undefined || to === undefined) return;
+  const d = localDate();
+  const wlog = get('wlog', []);
+  const del = new Set(get('wdeleted', []));
+  const k = `${exId}|${d}`;
+  const i = wlog.findIndex(e => e.ex === exId && e.d === d);
+  if (i === -1) { wlog.push({ t: Date.now(), d, ex: exId, from, to }); del.delete(k); }
+  else if (wlog[i].from === to) { wlog.splice(i, 1); del.add(k); }  // back where the day started
+  else { wlog[i] = { ...wlog[i], to, t: Date.now() }; del.delete(k); }
+  set('wlog', wlog);
+  set('wdeleted', [...del]);
+  dispatchEvent(new CustomEvent('exercises:changed'));
+}
+
+export function deleteWeightChanges(pred) {
+  const wlog = get('wlog', []);
+  const keep = [], removed = [];
+  for (const e of wlog) (pred(e) ? removed : keep).push(e);
+  if (!removed.length) return [];
+  const del = get('wdeleted', []);
+  for (const e of removed) del.push(weightKey(e));
+  set('wdeleted', del);
+  set('wlog', keep);
+  dispatchEvent(new CustomEvent('exercises:changed'));
+  return removed;
+}
+
+export function restoreWeightChanges(entries) {
+  if (!entries?.length) return;
+  const wlog = get('wlog', []);
+  const del = new Set(get('wdeleted', []));
+  for (const e of entries) { wlog.push(e); del.delete(weightKey(e)); }
+  wlog.sort((a, b) => a.t - b.t);
+  set('wlog', wlog);
+  set('wdeleted', [...del]);
+  dispatchEvent(new CustomEvent('exercises:changed'));
+}
+
 // ————— per-exercise prefs (mode override, etc.) —————
 
 export function getPref(exId) { return (get('prefs', {}))[exId] || {}; }
@@ -122,16 +171,18 @@ export function setPref(exId, patch) {
 
 // ————— backup —————
 
+const BACKUP_KEYS = ['v', 'prefs', 'log', 'routine', 'settings', 'deleted', 'wlog', 'wdeleted'];
+
 export function exportData() {
   const data = { app: 'exercises', exported: new Date().toISOString() };
-  for (const k of ['v', 'prefs', 'log', 'routine', 'settings', 'deleted']) data[k] = get(k);
+  for (const k of BACKUP_KEYS) data[k] = get(k);
   return JSON.stringify(data, null, 2);
 }
 
 export function importData(json) {
   const data = JSON.parse(json);
   if (!data || data.app !== 'exercises') throw new Error('Not an Exercises backup file');
-  for (const k of ['v', 'prefs', 'log', 'routine', 'settings', 'deleted']) {
+  for (const k of BACKUP_KEYS) {
     if (data[k] !== undefined && data[k] !== null) set(k, data[k]);
   }
 }

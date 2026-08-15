@@ -1,5 +1,5 @@
 // Cache-first app-shell service worker. Bump VERSION on every deploy.
-const VERSION = "exercises-v42";
+const VERSION = "exercises-v43";
 const SHELL = [
   "./",
   "index.html",
@@ -60,8 +60,10 @@ const SHELL = [
   "img/gen/glute-bridge.webp",
   "img/gen/half-split.webp",
   "img/gen/hinge-fold.webp",
+  "img/gen/hip-abductor-45.webp",
   "img/gen/hip-abductor-iso.webp",
   "img/gen/hip-abductor.webp",
+  "img/gen/hip-adductor-45.webp",
   "img/gen/hip-adductor-iso.webp",
   "img/gen/hip-adductor.webp",
   "img/gen/hip-airplane.webp",

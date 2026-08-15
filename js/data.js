@@ -118,7 +118,9 @@ export const EXERCISES = [
   { id: 'leg-extension-single',    cat: 'gym', group: 'h', name: 'Leg Extension · Single',      pt: 'Extensor Unilateral',       weight: 35,  mode: 'reps', target: 30, side: true },
   { id: 'leg-curl-lying-single',   cat: 'gym', group: 'h', name: 'Single-leg Lying Curl',       pt: 'Flexor Unilateral Deitado', weight: 20,  mode: 'reps', target: 30, side: true },
   { id: 'hip-abductor-iso',        cat: 'gym', group: 'h', name: 'Hip Abductor 45° · Iso',      pt: 'Abdutor 45 / Isometria',    weight: 75,  mode: 'time', target: 60 },
+  { id: 'hip-abductor-45',         cat: 'gym', group: 'h', name: 'Hip Abductor 45°',            pt: 'Abdutor 45',                weight: 75,  mode: 'reps', target: 30 },
   { id: 'hip-adductor-iso',        cat: 'gym', group: 'h', name: 'Hip Adductor 45° · Iso',      pt: 'Adutor 45 / Isometria',     weight: 70,  mode: 'time', target: 60 },
+  { id: 'hip-adductor-45',         cat: 'gym', group: 'h', name: 'Hip Adductor 45°',            pt: 'Adutor 45',                 weight: 70,  mode: 'reps', target: 30 },
   { id: 'back-extension',          cat: 'gym', group: 'h', name: 'Back Extension',              pt: 'Flexão Lombar',             weight: 0,   mode: 'reps', target: 30 },
 
   // ═══════════════ PUSH & PULL-UPS ═══════════════

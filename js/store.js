@@ -44,7 +44,7 @@ export function logSet(entry) {
   const log = get('log', []);
   log.push({ t: Date.now(), d: localDate(), ...entry });
   set('log', log);
-  dispatchEvent(new CustomEvent('exercises:logged'));
+  dispatchEvent(new CustomEvent('exercises:changed'));
   return log;
 }
 
@@ -64,7 +64,7 @@ export function undoLastToday(exId) {
       del.push(logKey(e));
       set('deleted', del);
       set('log', log);
-      dispatchEvent(new CustomEvent('exercises:logged'));
+      dispatchEvent(new CustomEvent('exercises:changed'));
       return e;
     }
   }
@@ -84,7 +84,7 @@ export function deleteEntries(pred) {
   for (const e of removed) del.push(logKey(e));
   set('deleted', del);
   set('log', keep);
-  dispatchEvent(new CustomEvent('exercises:logged'));
+  dispatchEvent(new CustomEvent('exercises:changed'));
   return removed;
 }
 
@@ -97,7 +97,7 @@ export function restoreEntries(entries) {
   log.sort((a, b) => a.t - b.t);
   set('log', log);
   set('deleted', [...del]);
-  dispatchEvent(new CustomEvent('exercises:logged'));
+  dispatchEvent(new CustomEvent('exercises:changed'));
 }
 
 export function getLog() { return get('log', []); }
@@ -115,6 +115,9 @@ export function setPref(exId, patch) {
   const prefs = get('prefs', {});
   prefs[exId] = { ...(prefs[exId] || {}), ...patch, _ts: Date.now() };
   set('prefs', prefs);
+  // Editing a weight is a change worth syncing on its own — without this it
+  // would sit here until the next logged set happened to push it.
+  dispatchEvent(new CustomEvent('exercises:changed'));
 }
 
 // ————— backup —————

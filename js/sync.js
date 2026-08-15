@@ -135,18 +135,26 @@ export async function syncNow() {
 }
 
 // ————— auto-sync —————
-// Shortly after any logged set, and when the app returns to the foreground.
+// Shortly after any local change (a logged set, a delete, a weight edit), and
+// when the app returns to the foreground.
 
 let timer = null;
+let pending = false;
 export function schedule(delay = 6000) {
   if (!cfg()?.auto) return;
   clearTimeout(timer);
-  timer = setTimeout(() => { syncNow().catch(() => {}); }, delay);
+  pending = true;
+  timer = setTimeout(() => { pending = false; syncNow().catch(() => {}); }, delay);
 }
 
-addEventListener('exercises:logged', () => schedule());
+addEventListener('exercises:changed', () => schedule());
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible') return;
+  if (document.visibilityState === 'hidden') {
+    // Backgrounding suspends timers on iOS, so a debounced push would never
+    // land — flush it now, before the other device is picked up.
+    if (pending) { clearTimeout(timer); pending = false; syncNow().catch(() => {}); }
+    return;
+  }
   const c = cfg();
   if (c?.auto && Date.now() - (c.lastSync || 0) > 60000) schedule(1200);
 });

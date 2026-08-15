@@ -755,11 +755,11 @@ function renderWeights(log) {
     const [y, m] = k.split('-').map(Number);
     const title = new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
     return `<div class="h-lab">${title}</div>
-      <div class="h-card list">${list.map(c => `
+      <div class="h-card list">${list.map(c => swipeRow(`ex:${c.d}:${c.ex}`, `
         <div class="w-row">
           <span class="x-main"><b>${byId[c.ex]?.name || c.ex}</b><small>${agoDay(c.d).replace(/^t/, 'T')} · ${groupOf(c.ex) || ''}</small></span>
           <span class="x-w"><b>${c.from} → ${c.to} kg</b><small>${deltaChip(c.delta)}</small></span>
-        </div>`).join('')}</div>`;
+        </div>`)).join('')}</div>`;
   }).join('');
 
   view.innerHTML = `<div class="history-wrap">

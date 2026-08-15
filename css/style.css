@@ -453,7 +453,8 @@ img[src^="img/gen/"] { border-radius: 18px; }
   width: 100%; display: flex; align-items: center; gap: 10px;
   padding: 11px 13px; text-align: left; background: transparent;
 }
-.d-row + .d-row, .d-open + .d-row, .d-row + .d-open { border-top: 1px solid var(--track); }
+/* Rows are wrapped in .swipe, so the hairline goes on the wrapper. */
+.swipe + .swipe, .d-open + .swipe, .swipe + .d-open { border-top: 1px solid var(--track); }
 .d-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .d-main b { font-size: 13px; font-weight: 600; }
 .d-main small { font-size: 11px; color: var(--muted); }
@@ -525,7 +526,6 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .sum-r b { font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .sum-l small, .sum-r small { font-size: 11px; color: var(--muted); }
 .w-row { display: flex; align-items: center; gap: 10px; padding: 10px 13px; }
-.w-row + .w-row { border-top: 1px solid var(--track); }
 
 .empty { text-align: center; color: var(--muted2); padding: 48px 20px; font-size: 14px; }
 .databar { display: flex; gap: 18px; justify-content: center; margin-top: 22px; }

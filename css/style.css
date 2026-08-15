@@ -498,6 +498,23 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .wchip.flat { color: var(--muted); background: var(--track); }
 .wchip.down { color: var(--danger); background: var(--danger-soft); }
 
+/* swipe-to-delete — drag a history row right to reveal the bin */
+.swipe { position: relative; overflow: hidden; touch-action: pan-y; }
+.swipe-del {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 76px;
+  display: grid; place-items: center;
+  background: var(--danger); color: #f7f2f0;
+}
+.swipe-del svg { width: 19px; height: 19px; }
+.swipe-body {
+  position: relative;
+  background: var(--card);
+  transition: transform .18s ease;
+  will-change: transform;
+}
+.d-open .swipe-body, .x-row { background: var(--day-body); }
+.swipe.open .swipe-body { transform: translateX(76px); }
+
 /* weight-changes screen */
 .h-card.sum { display: flex; justify-content: space-between; gap: 12px; padding: 12px 13px; margin-top: 12px; }
 .sum-l, .sum-r { display: flex; flex-direction: column; gap: 1px; }
@@ -585,12 +602,11 @@ img[src^="img/gen/"] { border-radius: 18px; }
    bottom edge) — give the page and the toast room to clear it */
 @media (min-width: 768px) {
   :root { --content-pad: 120px; }
-  #toast { bottom: calc(106px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ————— toast ————— */
 #toast {
-  position: fixed; left: 50%; bottom: calc(64px + 18px + env(safe-area-inset-bottom, 0px));
+  position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%) translateY(8px);
   background: var(--toast-bg); color: var(--toast-ink);
   font-size: 13px; font-weight: 600;
@@ -599,7 +615,14 @@ img[src^="img/gen/"] { border-radius: 18px; }
   transition: opacity .2s, transform .2s;
   z-index: 80; white-space: nowrap;
 }
+.toast-undo {
+  margin-left: 12px; padding: 2px 2px;
+  color: #b9d3a8; font-size: 13px; font-weight: 700;
+  pointer-events: auto;   /* the toast itself is click-through */
+}
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* the taller labelled bar sits higher on tablet/desktop — keep the toast clear */
+@media (min-width: 768px) { #toast { bottom: calc(106px + env(safe-area-inset-bottom, 0px)); } }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }

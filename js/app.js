@@ -31,11 +31,20 @@ export function fmtTime(totalS) {
 }
 
 let toastTimer = null;
-export function toast(msg) {
+// `onUndo` adds an Undo button and holds the toast open longer — used by the
+// History delete so a mis-swipe is always recoverable.
+export function toast(msg, onUndo) {
   toastEl.textContent = msg;
+  if (onUndo) {
+    const btn = document.createElement('button');
+    btn.className = 'toast-undo';
+    btn.textContent = 'Undo';
+    btn.onclick = () => { toastEl.classList.remove('show'); onUndo(); };
+    toastEl.appendChild(btn);
+  }
   toastEl.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), onUndo ? 5000 : 1800);
 }
 
 function chime(pattern) {
@@ -624,6 +633,17 @@ function dayLabel(d) {
 const ICON_GEAR = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>`;
 const ICON_CHEV = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>`;
 
+const ICON_TRASH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>`;
+
+// Wrap a History row so it can be swiped aside to reveal a delete button.
+// `target` is "day:<date>" or "ex:<date>:<exerciseId>".
+function swipeRow(target, inner) {
+  return `<div class="swipe" data-target="${target}">
+    <button class="swipe-del" data-del="${target}" aria-label="Delete">${ICON_TRASH}</button>
+    <div class="swipe-body">${inner}</div>
+  </div>`;
+}
+
 function historyEmpty() {
   return `<div class="h-head"><h2 class="h-title">History</h2>
       <div class="h-actions">${themeBtnHTML()}<button class="iconbtn" data-act="gear" aria-label="Data & sync">${ICON_GEAR}</button></div></div>
@@ -672,11 +692,11 @@ function renderHistory() {
     const reps = es.filter(e => e.mode === 'reps').reduce((a, e) => a + e.v, 0);
     const open = state.openDay === d;
     if (!open) {
-      return `<button class="d-row" data-day="${d}">
+      return swipeRow(`day:${d}`, `<button class="d-row" data-day="${d}">
         <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} set${es.length === 1 ? '' : 's'}${reps ? ` · ${reps} reps` : ''}</small></span>
         <span class="d-chip">${dayGroupLabel(es)}</span>
         <i class="d-chev">${ICON_CHEV}</i>
-      </button>`;
+      </button>`);
     }
     const det = dayDetail(log, d);
     const exRows = det.rows.map(r => {
@@ -687,11 +707,11 @@ function renderHistory() {
           ? `<i style="height:${Math.max(12, Math.round((b.s.w / max) * 100))}%" title="${period} · ${b.s.w} kg"></i>`
           : `<i class="none" title="${period} · no sets"></i>`;
       }).join('');
-      return `<div class="x-row">
+      return swipeRow(`ex:${d}:${r.exId}`, `<div class="x-row">
         <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets}×${r.reps ? ` · ${r.reps} reps` : ''}${r.secs ? ` · ${fmtTime(r.secs)}` : ''}</small></span>
         <span class="x-bars">${bars}</span>
         <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}${r.cur ? `<small>${deltaChip(r.delta)} · ${agoDay(r.sinceDay)}</small>` : ''}</span>
-      </div>`;
+      </div>`);
     }).join('');
     return `<div class="d-open">
       <button class="d-row head" data-day="${d}">
@@ -800,6 +820,89 @@ function syncSectionHTML() {
   return `<section class="day sync-section"><h3>Sync</h3><div class="sync-card">${inner}</div></section>`;
 }
 
+// ————— history swipe-to-delete —————
+// Drag a row to the right to reveal its delete button; deletes are tombstoned
+// (so a gist sync will not resurrect them) and offered back via an Undo toast.
+
+const SWIPE_OPEN = 76;   // how far the row rests when open
+const SWIPE_TRIGGER = 34; // drag past this and it snaps open
+
+let sw = null;           // { body, startX, startY, dx, dragging, decided }
+
+function closeSwipes(except) {
+  view.querySelectorAll('.swipe.open').forEach(el => { if (el !== except) el.classList.remove('open'); });
+}
+
+view.addEventListener('pointerdown', e => {
+  const body = e.target.closest('.swipe-body');
+  if (!body || e.target.closest('.swipe-del')) return;
+  sw = { body, startX: e.clientX, startY: e.clientY, dx: 0, dragging: false, decided: false };
+});
+
+view.addEventListener('pointermove', e => {
+  if (!sw) return;
+  const dx = e.clientX - sw.startX;
+  const dy = e.clientY - sw.startY;
+  if (!sw.decided) {
+    // let vertical scrolling win; only claim clearly-horizontal drags
+    if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; }
+    if (Math.abs(dx) < 8) return;
+    sw.decided = true;
+    sw.dragging = true;
+    closeSwipes(sw.body.parentElement);
+  }
+  sw.dx = Math.max(0, Math.min(dx, SWIPE_OPEN + 14)); // right-swipe only
+  sw.body.style.transition = 'none';
+  sw.body.style.transform = `translateX(${sw.dx}px)`;
+});
+
+let swipeJustDragged = false;
+
+function endSwipe() {
+  if (!sw) return;
+  const { body, dx, dragging } = sw;
+  sw = null;
+  if (!dragging) return;
+  body.style.transition = '';
+  body.style.transform = '';
+  body.parentElement.classList.toggle('open', dx > SWIPE_TRIGGER);
+  swipeJustDragged = true;  // the trailing click must not act on the row
+}
+view.addEventListener('pointerup', endSwipe);
+view.addEventListener('pointercancel', endSwipe);
+
+// A drag is always followed by a click; swallow that one, otherwise it would
+// immediately re-close the row it just opened (or expand the day underneath).
+view.addEventListener('click', e => {
+  if (swipeJustDragged) {
+    swipeJustDragged = false;
+    e.stopPropagation();
+    e.preventDefault();
+    return;
+  }
+  if (e.target.closest('.swipe-del')) return;          // let the delete through
+  const open = view.querySelector('.swipe.open');
+  if (open) {                                          // any tap elsewhere closes it
+    closeSwipes();
+    if (open.contains(e.target)) { e.stopPropagation(); e.preventDefault(); }
+  }
+}, true);
+
+// "day:<date>" removes that day's sets; "ex:<date>:<id>" removes one exercise's.
+function deleteTarget(target) {
+  const [kind, d, exId] = target.split(':');
+  const pred = kind === 'day'
+    ? e => e.d === d
+    : e => e.d === d && e.ex === exId;
+  const removed = store.deleteEntries(pred);
+  if (!removed.length) return;
+  const what = kind === 'day' ? dayLabel(d) : (byId[exId]?.name || exId);
+  navigator.vibrate?.(14);
+  if (kind === 'day' && state.openDay === d) state.openDay = null;
+  renderHistory();
+  toast(`Deleted · ${what}`, () => { store.restoreEntries(removed); renderHistory(); });
+}
+
 // ————— render root —————
 
 function render() {
@@ -881,6 +984,10 @@ view.addEventListener('click', e => {
     openPlayer(list, list.indexOf(card.dataset.ex));
     return;
   }
+  // history: delete a swiped-open row
+  const del = e.target.closest('.swipe-del[data-del]');
+  if (del) { deleteTarget(del.dataset.del); return; }
+
   // history: expand/collapse a day (single open at a time)
   const dayRow = e.target.closest('[data-day]');
   if (dayRow) {

@@ -71,6 +71,35 @@ export function undoLastToday(exId) {
   return null;
 }
 
+// Delete every entry matching `pred` (History swipe-to-delete). Like
+// undoLastToday it tombstones them, otherwise the next gist sync would
+// union-merge them straight back in. Returns what was removed so it can be
+// restored by an undo.
+export function deleteEntries(pred) {
+  const log = get('log', []);
+  const keep = [], removed = [];
+  for (const e of log) (pred(e) ? removed : keep).push(e);
+  if (!removed.length) return [];
+  const del = get('deleted', []);
+  for (const e of removed) del.push(logKey(e));
+  set('deleted', del);
+  set('log', keep);
+  dispatchEvent(new CustomEvent('exercises:logged'));
+  return removed;
+}
+
+// Put deleted entries back and lift their tombstones.
+export function restoreEntries(entries) {
+  if (!entries?.length) return;
+  const log = get('log', []);
+  const del = new Set(get('deleted', []));
+  for (const e of entries) { log.push(e); del.delete(logKey(e)); }
+  log.sort((a, b) => a.t - b.t);
+  set('log', log);
+  set('deleted', [...del]);
+  dispatchEvent(new CustomEvent('exercises:logged'));
+}
+
 export function getLog() { return get('log', []); }
 
 export function todayFor(exId) {

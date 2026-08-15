@@ -485,6 +485,8 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .x-bars { flex: 0 0 auto; display: flex; align-items: flex-end; gap: 3px; height: 22px; }
 .x-bars i { width: 4px; border-radius: 2px; background: var(--heat2); display: block; }
 .x-bars i:last-child { background: var(--accent); }
+/* a two-month period with no sets still holds its slot */
+.x-bars i.none { height: 3px; background: var(--track); }
 .x-w { flex: 0 0 auto; text-align: right; display: flex; flex-direction: column; gap: 2px; min-width: 74px; }
 .x-w b { font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .x-w small { font-size: 10px; color: var(--muted); white-space: nowrap; }

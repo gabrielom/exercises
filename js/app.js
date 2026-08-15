@@ -544,8 +544,28 @@ function heatCells(byDay) {
   return cells;
 }
 
-// Per-exercise detail for one day: totals, the last six sessions' weights (for
-// the sparkline bars) and how the current weight compares with the one before.
+const monthIdx = ymd => { const [y, m] = ymd.split('-').map(Number); return y * 12 + (m - 1); };
+const monthName = mi => new Date(Math.floor(mi / 12), mi % 12, 1).toLocaleDateString(undefined, { month: 'short' });
+
+// Six bars = the year ending on `d`, one bar per two-month period. Each bar is
+// the latest weight logged in its period, so a row reads as a year of progress
+// rather than whatever happened in the last six sessions.
+function yearBuckets(sessions, d) {
+  const m0 = monthIdx(d);
+  const buckets = Array.from({ length: 6 }, (_, i) => {
+    const endM = m0 - (5 - i) * 2;                 // newest bucket ends at d's month
+    return { from: endM - 1, to: endM, s: null };
+  });
+  for (const s of sessions) {                      // oldest → newest, so the last wins
+    if (s.day > d) continue;
+    const back = Math.floor((m0 - monthIdx(s.day)) / 2);
+    if (back >= 0 && back <= 5) buckets[5 - back].s = s;
+  }
+  return buckets;
+}
+
+// Per-exercise detail for one day: totals, a year of two-month weight bars and
+// how the current weight compares with the one before.
 function dayDetail(log, d) {
   const entries = (byDayMap(log).get(d) || []);
   const perEx = new Map();
@@ -558,13 +578,13 @@ function dayDetail(log, d) {
   }
   const rows = [];
   for (const [exId, a] of perEx) {
-    // weight per session (day) for this exercise, oldest → newest, last 6
+    // weight per session (day) for this exercise, oldest → newest
     const sessions = [...byDayMap(log.filter(e => e.ex === exId)).entries()]
       .sort((x, y) => (x[0] < y[0] ? -1 : 1))
       .map(([day, es]) => ({ day, w: Math.max(0, ...es.map(e => e.w || 0)) }));
     const upTo = sessions.filter(s => s.day <= d);
-    const bars = upTo.slice(-6);
-    const cur = bars.length ? bars[bars.length - 1].w : a.w;
+    const bars = yearBuckets(upTo, d);
+    const cur = upTo.length ? upTo[upTo.length - 1].w : a.w;
     // walk back to the session where the weight last changed
     let delta = 0, sinceDay = upTo[0]?.day || d;
     for (let i = upTo.length - 1; i > 0; i--) {
@@ -653,15 +673,20 @@ function renderHistory() {
     const open = state.openDay === d;
     if (!open) {
       return `<button class="d-row" data-day="${d}">
-        <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} sets${reps ? ` · ${reps} reps` : ''}</small></span>
+        <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} set${es.length === 1 ? '' : 's'}${reps ? ` · ${reps} reps` : ''}</small></span>
         <span class="d-chip">${dayGroupLabel(es)}</span>
         <i class="d-chev">${ICON_CHEV}</i>
       </button>`;
     }
     const det = dayDetail(log, d);
     const exRows = det.rows.map(r => {
-      const max = Math.max(1, ...r.bars.map(b => b.w));
-      const bars = r.bars.map(b => `<i style="height:${Math.max(12, Math.round((b.w / max) * 100))}%"></i>`).join('');
+      const max = Math.max(1, ...r.bars.map(b => b.s?.w || 0));
+      const bars = r.bars.map(b => {
+        const period = `${monthName(b.from)}–${monthName(b.to)}`;
+        return b.s
+          ? `<i style="height:${Math.max(12, Math.round((b.s.w / max) * 100))}%" title="${period} · ${b.s.w} kg"></i>`
+          : `<i class="none" title="${period} · no sets"></i>`;
+      }).join('');
       return `<div class="x-row">
         <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets}×${r.reps ? ` · ${r.reps} reps` : ''}${r.secs ? ` · ${fmtTime(r.secs)}` : ''}</small></span>
         <span class="x-bars">${bars}</span>
@@ -670,7 +695,7 @@ function renderHistory() {
     }).join('');
     return `<div class="d-open">
       <button class="d-row head" data-day="${d}">
-        <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} sets${reps ? ` · ${reps} reps` : ''}</small></span>
+        <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} set${es.length === 1 ? '' : 's'}${reps ? ` · ${reps} reps` : ''}</small></span>
         <span class="d-chip strong">${dayGroupLabel(es)}</span>
         <i class="d-chev open">${ICON_CHEV}</i>
       </button>

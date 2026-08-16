@@ -98,7 +98,6 @@ function payload() {
     prefs: store.get('prefs', {}),
     deleted: store.get('deleted', []),
     wlog: store.get('wlog', []),
-    wdeleted: store.get('wdeleted', []),
   };
 }
 
@@ -128,21 +127,17 @@ export async function syncNow() {
     const prefs = mergePrefs(store.get('prefs', {}), remote.prefs || {});
     const pulled = log.length - localLog.length;
 
-    const wdeleted = [...new Set([...store.get('wdeleted', []), ...(remote.wdeleted || [])])];
-    const wDelSet = new Set(wdeleted);
-    const wlog = mergeWeights(store.get('wlog', []), remote.wlog || [])
-      .filter(e => !wDelSet.has(weightKey(e)));
+    // Deletions are records here, so the merge already carries them.
+    const wlog = mergeWeights(store.get('wlog', []), remote.wlog || []);
 
     store.set('log', log);
     store.set('prefs', prefs);
     store.set('deleted', deleted);
     store.set('wlog', wlog);
-    store.set('wdeleted', wdeleted);
 
     const changed = log.length !== (remote.log || []).length
       || deleted.length !== (remote.deleted || []).length
-      || wlog.length !== (remote.wlog || []).length
-      || wdeleted.length !== (remote.wdeleted || []).length
+      || JSON.stringify(wlog) !== JSON.stringify(remote.wlog || [])
       || JSON.stringify(prefs) !== JSON.stringify(remote.prefs || {});
     if (changed) {
       await gh(`/gists/${c.gistId}`, {

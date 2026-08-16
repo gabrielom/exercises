@@ -534,7 +534,7 @@ function streakDays(days) {
 // observations on one timeline, and a change is emitted wherever consecutive
 // observations differ — so editing a weight counts on its own, and logging a
 // set at that same weight afterwards doesn't repeat it. Newest first.
-function weightChanges(log, wlog = store.getWeightLog()) {
+function weightChanges(log, wlog = store.liveWeightLog()) {
   const obs = [];
   for (const e of log) if (e.w) obs.push({ t: e.t, d: e.d, ex: e.ex, w: e.w });
   for (const e of wlog) obs.push({ t: e.t, d: e.d, ex: e.ex, w: e.to, from: e.from, edit: true });

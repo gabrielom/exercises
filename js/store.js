@@ -29,6 +29,10 @@ export function remove(k) {
 
 export function init() {
   if (get('v') === null) set('v', VERSION);
+  // Weight-change deletions used to live in a separate tombstone list keyed by
+  // exercise + day. That key is reused, so those entries would go on erasing
+  // later changes for the same day — drop them.
+  remove('wdeleted');
 }
 
 // ————— sets log —————
@@ -110,50 +114,54 @@ export function todayFor(exId) {
 // ————— weight changes —————
 // Editing a weight is worth remembering even on a day nothing was logged, so it
 // gets its own record rather than being inferred from the sets log. One record
-// per exercise per day (repeated taps on +/− collapse into it), which also
-// makes it a clean last-write-wins key for sync.
+// per exercise per day, so repeated taps on +/− collapse into it.
+//
+// Unlike the sets log, that key (exercise + day) gets reused, so a deletion
+// cannot be a plain tombstone: a tombstone would also swallow the next change
+// recorded for the same exercise on the same day, and sync would keep handing
+// it back. A deletion is a timestamped record of its own instead, which makes
+// every write — value or deletion — last-write-wins on the same key.
 
 export const weightKey = e => `${e.ex}|${e.d}`;
 
 export function getWeightLog() { return get('wlog', []); }
+export function liveWeightLog() { return get('wlog', []).filter(e => !e.deleted); }
+
+function putWeight(rec) {
+  const wlog = get('wlog', []).filter(e => weightKey(e) !== weightKey(rec));
+  wlog.push(rec);
+  wlog.sort((a, b) => a.t - b.t);
+  set('wlog', wlog);
+  dispatchEvent(new CustomEvent('exercises:changed'));
+}
 
 export function logWeightChange(exId, from, to) {
-  if (from === to || from === undefined || to === undefined) return;
+  if (from === to || from == null || to == null) return;
   const d = localDate();
-  const wlog = get('wlog', []);
-  const del = new Set(get('wdeleted', []));
-  const k = `${exId}|${d}`;
-  const i = wlog.findIndex(e => e.ex === exId && e.d === d);
-  if (i === -1) { wlog.push({ t: Date.now(), d, ex: exId, from, to }); del.delete(k); }
-  else if (wlog[i].from === to) { wlog.splice(i, 1); del.add(k); }  // back where the day started
-  else { wlog[i] = { ...wlog[i], to, t: Date.now() }; del.delete(k); }
-  set('wlog', wlog);
-  set('wdeleted', [...del]);
-  dispatchEvent(new CustomEvent('exercises:changed'));
+  const cur = liveWeightLog().find(e => e.ex === exId && e.d === d);
+  const t = Date.now();
+  if (!cur) putWeight({ t, d, ex: exId, from, to });
+  else if (cur.from === to) putWeight({ t, d, ex: exId, deleted: true }); // back where the day started
+  else putWeight({ ...cur, t, to });
 }
 
 export function deleteWeightChanges(pred) {
   const wlog = get('wlog', []);
-  const keep = [], removed = [];
-  for (const e of wlog) (pred(e) ? removed : keep).push(e);
+  const removed = wlog.filter(e => !e.deleted && pred(e));
   if (!removed.length) return [];
-  const del = get('wdeleted', []);
-  for (const e of removed) del.push(weightKey(e));
-  set('wdeleted', del);
-  set('wlog', keep);
+  const gone = new Set(removed.map(weightKey));
+  const t = Date.now();
+  const next = wlog.filter(e => !gone.has(weightKey(e)));
+  for (const e of removed) next.push({ t, d: e.d, ex: e.ex, deleted: true });
+  next.sort((a, b) => a.t - b.t);
+  set('wlog', next);
   dispatchEvent(new CustomEvent('exercises:changed'));
   return removed;
 }
 
 export function restoreWeightChanges(entries) {
-  if (!entries?.length) return;
-  const wlog = get('wlog', []);
-  const del = new Set(get('wdeleted', []));
-  for (const e of entries) { wlog.push(e); del.delete(weightKey(e)); }
-  wlog.sort((a, b) => a.t - b.t);
-  set('wlog', wlog);
-  set('wdeleted', [...del]);
-  dispatchEvent(new CustomEvent('exercises:changed'));
+  // Stamped now so the restore out-dates the deletion it is undoing.
+  for (const e of entries || []) putWeight({ ...e, t: Date.now() });
 }
 
 // ————— per-exercise prefs (mode override, etc.) —————
@@ -171,7 +179,7 @@ export function setPref(exId, patch) {
 
 // ————— backup —————
 
-const BACKUP_KEYS = ['v', 'prefs', 'log', 'routine', 'settings', 'deleted', 'wlog', 'wdeleted'];
+const BACKUP_KEYS = ['v', 'prefs', 'log', 'routine', 'settings', 'deleted', 'wlog'];
 
 export function exportData() {
   const data = { app: 'exercises', exported: new Date().toISOString() };

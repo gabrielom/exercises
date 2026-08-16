@@ -808,8 +808,29 @@ function renderGear() {
       <button data-act="reset" class="danger">Reset data</button>
     </div>
     ${syncSectionHTML()}
+    <div class="verline">
+      <span>Version <b id="appVer">…</b></span>
+      <button data-act="update">Check for update</button>
+    </div>
     <input type="file" id="importFile" accept="application/json" hidden>
   </div>`;
+  appVersion().then(v => {
+    const el = document.getElementById('appVer');
+    if (el) el.textContent = v ? v.replace('exercises-', '') : 'not cached';
+  });
+}
+
+async function checkForUpdate() {
+  const reg = await navigator.serviceWorker?.getRegistration();
+  if (!reg) { toast('No service worker'); return; }
+  toast('Checking…');
+  try {
+    await reg.update();
+    // A newer worker skips waiting and claims the page, which reloads us.
+    toast(reg.installing || reg.waiting ? 'Updating…' : 'Up to date');
+  } catch {
+    toast('Could not check — no connection?');
+  }
 }
 
 function agoLabel(ts) {
@@ -1044,6 +1065,7 @@ view.addEventListener('click', e => {
   if (!actBtn) return;
   const act = actBtn.dataset.act;
   if (act === 'gear' || act === 'weights') { state.hView = act === 'gear' ? 'gear' : 'weights'; renderHistory(); scrollTo(0, 0); return; }
+  if (act === 'update') { checkForUpdate(); return; }
   if (act === 'h-back') { state.hView = 'list'; renderHistory(); scrollTo(0, 0); return; }
   if (actBtn.dataset.act === 'export') doExport();
   else if (actBtn.dataset.act === 'import') view.querySelector('#importFile').click();
@@ -1138,6 +1160,44 @@ applyTheme();
 render();
 if (sync.connected()) sync.schedule(1500); // pull other devices' sets shortly after open
 
+// ————— updates —————
+// Everything is served cache-first, so a deploy only reaches the device once a
+// new service worker takes over. Left to itself iOS can sit on the old one for
+// a long time: check on launch and on every return to the foreground, bypassing
+// the HTTP cache, and reload as soon as the new worker is in charge.
+
 if ('serviceWorker' in navigator) {
-  addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false, pendingReload = false;
+
+  const applyUpdate = () => {
+    if (reloading) return;
+    if (player.open) { pendingReload = true; return; } // never mid-workout
+    reloading = true;
+    location.reload();
+  };
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController) applyUpdate();                  // not the very first install
+  });
+
+  addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
+      reg.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+        else if (pendingReload) applyUpdate();          // catch up while out of sight
+      });
+    }).catch(() => {});
+  });
+}
+
+// The active cache is named after the deployed version, so it says exactly
+// which build this device is running.
+export async function appVersion() {
+  try {
+    const keys = await caches.keys();
+    const n = k => Number((k.match(/-v(\d+)$/) || [])[1] || 0);
+    return keys.filter(k => k.startsWith('exercises-v')).sort((a, b) => n(a) - n(b)).pop() || null;
+  } catch { return null; }
 }

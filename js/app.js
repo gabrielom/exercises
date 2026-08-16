@@ -775,6 +775,29 @@ function groupOf(exId) {
   const defs = SUBGROUPS[ex.cat];
   return defs && ex.group ? defs[ex.group] : CATS[ex.cat];
 }
+// Every group a day's sets belong to, busiest first.
+function tallied(entries, of) {
+  const tally = {};
+  for (const e of entries) { const k = of(e); if (k) tally[k] = (tally[k] || 0) + 1; }
+  return Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+}
+
+// One chip per thing a day touched, so a collapsed row says what it was
+// without being opened. Séries are the exception: they collapse into a single
+// "Séries E · F", since the letters read as a set.
+function dayChips(entries) {
+  const series = [], rest = [];
+  for (const label of tallied(entries, e => groupOf(e.ex))) {
+    const m = label.match(/^Série\s+(.+)$/);
+    if (m) series.push(m[1]); else rest.push(label);
+  }
+  series.sort();
+  const chips = [];
+  if (series.length === 1) chips.push(`Série ${series[0]}`);
+  else if (series.length) chips.push(`Séries ${series.join(' · ')}`);
+  return chips.concat(rest);
+}
+
 // Ordinary sentence case — a capital to open and lower case after it. A lone
 // letter is left alone, otherwise "Série G" would come out as "Série g".
 function sentenceCase(phrase) {
@@ -1032,6 +1055,7 @@ function renderHistory() {
     if (!open) {
       return swipeRow(`day:${d}`, `<button class="d-row" data-day="${d}">
         <span class="d-main"><b>${dayLabel(d)}</b><small>${meta}</small></span>
+        <span class="d-chips">${dayChips(es).map(c => `<span class="d-chip">${c}</span>`).join('')}</span>
         <i class="d-chev">${ICON_CHEV}</i>
       </button>`);
     }
@@ -1579,19 +1603,15 @@ if ('serviceWorker' in navigator) {
 // executing, which is worse than saying nothing.
 const shortVer = v => (v || '').replace('exercises-', '');
 
-function runningVersion() {
-  const sw = navigator.serviceWorker?.controller;
-  if (!sw) return Promise.resolve(null);
-  return new Promise(resolve => {
-    const ch = new MessageChannel();
-    const done = v => { clearTimeout(t); resolve(v); };
-    const t = setTimeout(() => done(null), 800);   // a build too old to answer
-    ch.port1.onmessage = e => done(e.data?.version || null);
-    try { sw.postMessage('version', [ch.port2]); } catch { done(null); }
-  });
-}
+// The build of THIS file. Asking the service worker was wrong: the worker
+// updates the moment a new build downloads, while an already-loaded page goes
+// on running the code it started with — so the screen claimed a version it was
+// not executing. A constant compiled into the running script cannot lie.
+// Bump it with sw.js on every deploy.
+const BUILD = 'v65';
 
 async function cachedVersion() {
+
   try {
     const keys = await caches.keys();
     const n = k => Number((k.match(/-v(\d+)$/) || [])[1] || 0);
@@ -1600,12 +1620,6 @@ async function cachedVersion() {
 }
 
 export async function appVersion() {
-  const [running, cached] = await Promise.all([runningVersion(), cachedVersion()]);
-  if (!running && !cached) return { label: 'not cached', stale: false };
-  if (!running) return { label: `${shortVer(cached)} downloaded`, stale: true };
-  return {
-    label: shortVer(running),
-    stale: !!cached && cached !== running,
-    ready: shortVer(cached),
-  };
+  const cached = shortVer(await cachedVersion());
+  return { label: BUILD, stale: !!cached && cached !== BUILD, ready: cached };
 }

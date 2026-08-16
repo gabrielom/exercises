@@ -739,15 +739,32 @@ function tallied(entries, of) {
   return Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([k]) => k);
 }
 
-function dayGroupLabel(entries) {
-  const gs = tallied(entries, e => groupOf(e.ex));
-  if (gs.length < 2) return gs[0] || '';
-  // "Série F" + "Série G" reads better as "Séries F · G".
-  const parts = gs.map(g => g.match(/^(\S+)\s+(.+)$/));
-  if (parts.every(p => p && p[1] === parts[0][1])) {
-    return `${parts[0][1]}s ${parts.map(p => p[2]).join(' · ')}`;
+// One chip per thing the day touched. Séries are the exception: they collapse
+// into a single "Séries E · F", since the letters read as a set. Everything
+// else — stretching blocks, calisthenics — keeps its own name.
+function dayChips(entries) {
+  const series = [], rest = [];
+  for (const label of tallied(entries, e => groupOf(e.ex))) {
+    const m = label.match(/^Série\s+(.+)$/);
+    if (m) series.push(m[1]); else rest.push(label);
   }
-  return gs.join(' · ');
+  series.sort();
+  const chips = [];
+  if (series.length === 1) chips.push(`Série ${series[0]}`);
+  else if (series.length) chips.push(`Séries ${series.join(' · ')}`);
+  return chips.concat(rest);
+}
+
+function dayGroupLabel(entries) { return dayChips(entries).join(' · '); }
+
+// The série (or stretching block) a row belongs to, named with its focus so a
+// section header says what it worked: "Série G · Back & Biceps".
+function sectionLabel(exId) {
+  const ex = byId[exId];
+  if (!ex) return '';
+  const name = groupOf(exId) || '';
+  const focus = ex.cat === 'gym' ? GROUP_FOCUS[ex.group] : null;
+  return focus ? `${name} · ${titleCase(focus)}` : name;
 }
 
 const titleCase = s => s.replace(/\b\w/g, c => c.toUpperCase());
@@ -981,12 +998,12 @@ function renderHistory() {
     if (!open) {
       return swipeRow(`day:${d}`, `<button class="d-row" data-day="${d}">
         <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} set${es.length === 1 ? '' : 's'}${reps ? ` · ${reps} reps` : ''}</small></span>
-        <span class="d-chip">${dayGroupLabel(es)}</span>
+        <span class="d-chips">${dayChips(es).map(c => `<span class="d-chip">${c}</span>`).join('')}</span>
         <i class="d-chev">${ICON_CHEV}</i>
       </button>`);
     }
     const det = dayDetail(log, d);
-    const exRows = det.rows.map(r => {
+    const exRow = r => {
       const max = Math.max(1, ...r.bars.map(b => b.s?.w || 0));
       const bars = r.bars.map(b => {
         const period = `${monthName(b.from)}–${monthName(b.to)}`;
@@ -999,11 +1016,25 @@ function renderHistory() {
         <span class="x-bars">${bars}</span>
         <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}${r.cur ? `<small>${deltaChip(r.delta)}${r.delta ? ` · changed ${agoDay(r.sinceDay)}` : ''}</small>` : ''}</span>
       </div>`);
-    }).join('');
+    };
+
+    // Split the day by what each exercise belongs to, in the order it was
+    // trained, so a session across two séries reads as two blocks rather than
+    // one undifferentiated list. A day inside a single group needs no headers.
+    const sections = [];
+    for (const r of det.rows) {
+      const label = sectionLabel(r.exId);
+      let s = sections.find(x => x.label === label);
+      if (!s) sections.push(s = { label, rows: [] });
+      s.rows.push(r);
+    }
+    const exRows = sections.length > 1
+      ? sections.map(s => `<div class="x-head">${s.label}</div>${s.rows.map(exRow).join('')}`).join('')
+      : det.rows.map(exRow).join('');
     return `<div class="d-open">
       <button class="d-row head" data-day="${d}">
         <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} set${es.length === 1 ? '' : 's'}${reps ? ` · ${reps} reps` : ''}</small></span>
-        <span class="d-chip strong">${dayGroupLabel(es)}</span>
+        <span class="d-chips">${dayChips(es).map(c => `<span class="d-chip strong">${c}</span>`).join('')}</span>
         <i class="d-chev open">${ICON_CHEV}</i>
       </button>
       <div class="d-focus"><span>${dayFocusLabel(es)}</span><b>${det.volume ? `${det.volume.toLocaleString()} kg` : ''}</b></div>

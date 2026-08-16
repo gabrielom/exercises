@@ -487,10 +487,14 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .d-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .d-main b { font-size: 13px; font-weight: 600; }
 .d-main small { font-size: 11px; color: var(--muted); }
+.d-chips {
+  flex: 0 1 auto; min-width: 0;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px;
+}
 .d-chip {
   flex: 0 0 auto; font-size: 10.5px; font-weight: 600; color: var(--accent);
   background: var(--accent-soft); border-radius: 999px; padding: 2px 9px;
-  max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .d-chip.strong { background: var(--accent-soft2); }
 .d-chev { color: var(--muted); display: block; transition: transform .18s; }
@@ -505,6 +509,13 @@ img[src^="img/gen/"] { border-radius: 18px; }
   border-top: 1px solid var(--day-line);
 }
 .d-focus b { color: var(--accent); font-weight: 650; font-variant-numeric: tabular-nums; }
+/* section header inside an expanded day, one per série / stretching block */
+.x-head {
+  padding: 9px 13px 3px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); background: var(--day-body);
+}
+.swipe + .x-head { border-top: 1px solid var(--track); }
 .x-row {
   display: flex; align-items: center; gap: 10px;
   background: var(--day-body); padding: 9px 13px; border-top: 1px solid var(--day-line);

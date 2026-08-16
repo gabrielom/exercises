@@ -1595,6 +1595,26 @@ if ('serviceWorker' in navigator) {
       });
     }).catch(() => {});
   });
+
+  // A downloaded build that never took over is how the app ends up showing old
+  // code while the update sits there waiting to be pressed. Whenever the cache
+  // holds a different build from the one running, reload onto it. Capped per
+  // session so a build that somehow cannot take over cannot spin.
+  const RELOAD_KEY = 'exercises.autoreloads';
+  async function reloadIfStale() {
+    if (player.open || reloading) return;
+    const cached = shortVer(await cachedVersion());
+    if (!cached || cached === BUILD) return;
+    const n = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
+    if (n >= 2) return;
+    sessionStorage.setItem(RELOAD_KEY, String(n + 1));
+    applyUpdate();
+  }
+  addEventListener('pageshow', reloadIfStale);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') reloadIfStale();
+  });
+  setTimeout(reloadIfStale, 2500);   // and shortly after a cold start
 }
 
 // Which build is actually running, and which one is downloaded. They differ
@@ -1608,7 +1628,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v65';
+const BUILD = 'v66';
 
 async function cachedVersion() {
 

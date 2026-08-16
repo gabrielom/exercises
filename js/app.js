@@ -1035,12 +1035,12 @@ function renderHistory() {
 
   const tiles = `
     <div class="h-tiles">
-      <div class="h-tile"><b class="sage">${streak}</b><span>day streak</span></div>
-      <div class="h-tile"><b>${sessions}</b><span>sessions this week</span></div>
       <button class="h-tile link" data-act="weights">
         <b class="sage">${added >= 0 ? '+' : ''}${+added.toFixed(1)}</b><span>kg · weight changes</span>
         <i class="t-chev">${ICON_CHEV}</i>
       </button>
+      <div class="h-tile"><b class="sage">${streak}</b><span>day streak</span></div>
+      <div class="h-tile"><b>${sessions}</b><span>sessions this week</span></div>
     </div>`;
 
   const since = days.length
@@ -1682,7 +1682,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v71';
+const BUILD = 'v72';
 
 async function cachedVersion() {
 

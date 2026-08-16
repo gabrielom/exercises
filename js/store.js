@@ -159,6 +159,19 @@ export function deleteWeightChanges(pred) {
   return removed;
 }
 
+// Wipe every recorded weight change. Each one becomes a fresh deletion rather
+// than simply disappearing, so the reset travels to the other devices and the
+// gist instead of being undone by the next merge. Returns how many were live.
+export function clearWeightChanges() {
+  const wlog = get('wlog', []);
+  if (!wlog.length) return 0;
+  const t = Date.now();
+  const live = wlog.filter(e => !e.deleted).length;
+  set('wlog', wlog.map(e => ({ t, d: e.d, ex: e.ex, deleted: true })));
+  dispatchEvent(new CustomEvent('exercises:changed'));
+  return live;
+}
+
 export function restoreWeightChanges(entries) {
   // Stamped now so the restore out-dates the deletion it is undoing.
   for (const e of entries || []) putWeight({ ...e, t: Date.now() });

@@ -967,6 +967,9 @@ function renderGear() {
       <button data-act="import">Import</button>
       <button data-act="reset" class="danger">Reset data</button>
     </div>
+    <div class="databar sub">
+      <button data-act="reset-weights" class="danger">Reset weight changes</button>
+    </div>
     ${syncSectionHTML()}
     <div class="verline">
       <span>Version <b id="appVer">…</b></span>
@@ -1230,6 +1233,7 @@ view.addEventListener('click', e => {
   if (actBtn.dataset.act === 'export') doExport();
   else if (actBtn.dataset.act === 'import') view.querySelector('#importFile').click();
   else if (actBtn.dataset.act === 'reset') doReset();
+  else if (actBtn.dataset.act === 'reset-weights') doResetWeights(actBtn);
   else if (actBtn.dataset.act === 'sync-connect') doSyncConnect(actBtn);
   else if (actBtn.dataset.act === 'sync-now') doSyncNow(actBtn);
   else if (actBtn.dataset.act === 'sync-off') {
@@ -1287,6 +1291,29 @@ function doExport() {
   a.click();
   URL.revokeObjectURL(a.href);
   toast('Backup downloaded');
+}
+
+// Clears the recorded weight changes everywhere, on this device and through the
+// gist. Logged sets are untouched, so changes the app can still read off the
+// training log stay — those are not records we invented, and dropping them
+// would mean deleting sessions.
+async function doResetWeights(btn) {
+  if (!confirm('Clear every recorded weight change, on this device and in the gist?\n\nLogged sets are kept, so changes visible from your training history stay.')) return;
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = 'Clearing…';
+  try {
+    // Pull first, so records only the other device knows about get cleared too.
+    if (sync.connected()) await sync.syncNow().catch(() => {});
+    const n = store.clearWeightChanges();
+    if (sync.connected()) await sync.syncNow();
+    toast(n ? `Cleared ${n} recorded weight change${n === 1 ? '' : 's'}` : 'Nothing to clear');
+  } catch (err) {
+    toast(`Cleared here, but the gist did not update: ${err.message}`);
+  }
+  btn.disabled = false;
+  btn.textContent = label;
+  renderHistory();
 }
 
 function doReset() {

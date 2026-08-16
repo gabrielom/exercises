@@ -561,6 +561,8 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .databar { display: flex; gap: 18px; justify-content: center; margin-top: 22px; }
 .databar button { font-size: 12px; font-weight: 600; color: var(--muted2); padding: 6px 8px; border-radius: 8px; }
 .databar .danger { color: var(--danger); }
+.databar.sub { margin-top: 6px; }
+.databar.sub button { font-size: 11.5px; font-weight: 600; }
 .verline {
   display: flex; align-items: center; justify-content: center; gap: 14px;
   margin-top: 22px; font-size: 11.5px; color: var(--muted2);

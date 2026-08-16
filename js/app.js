@@ -950,8 +950,13 @@ function dayDetail(log, d) {
     }
     rows.push({ exId, ...a, bars, cur, delta, sinceDay });
   }
-  const volume = entries.reduce((t, e) => t + (e.mode === 'reps' ? e.v * (e.w || 0) : 0), 0);
-  return { entries, rows, volume };
+  return { entries, rows };
+}
+
+// Weight actually moved: reps × the weight on the bar. Timed holds carry no
+// rep count, so they contribute nothing here.
+function dayVolume(entries) {
+  return entries.reduce((t, e) => t + (e.mode === 'reps' ? e.v * (e.w || 0) : 0), 0);
 }
 
 function agoDay(d) {
@@ -1049,11 +1054,17 @@ function renderHistory() {
   const rows = days.slice(0, 30).map(d => {
     const es = byDay.get(d);
     const reps = es.filter(e => e.mode === 'reps').reduce((a, e) => a + e.v, 0);
+    const vol = dayVolume(es);
+    // Sets, reps and the weight moved — all of it readable without opening the
+    // day. The séries used to sit here as chips; the sections inside the day
+    // name them now.
+    const meta = `${es.length} set${es.length === 1 ? '' : 's'}`
+      + (reps ? ` · ${reps} reps` : '')
+      + (vol ? ` · ${vol.toLocaleString()} kg` : '');
     const open = state.openDay === d;
     if (!open) {
       return swipeRow(`day:${d}`, `<button class="d-row" data-day="${d}">
-        <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} set${es.length === 1 ? '' : 's'}${reps ? ` · ${reps} reps` : ''}</small></span>
-        <span class="d-chips">${dayChips(es).map(c => `<span class="d-chip">${c}</span>`).join('')}</span>
+        <span class="d-main"><b>${dayLabel(d)}</b><small>${meta}</small></span>
         <i class="d-chev">${ICON_CHEV}</i>
       </button>`);
     }
@@ -1088,11 +1099,10 @@ function renderHistory() {
       : det.rows.map(exRow).join('');
     return `<div class="d-open">
       <button class="d-row head" data-day="${d}">
-        <span class="d-main"><b>${dayLabel(d)}</b><small>${es.length} set${es.length === 1 ? '' : 's'}${reps ? ` · ${reps} reps` : ''}</small></span>
-        <span class="d-chips">${dayChips(es).map(c => `<span class="d-chip strong">${c}</span>`).join('')}</span>
+        <span class="d-main"><b>${dayLabel(d)}</b><small>${meta}</small></span>
         <i class="d-chev open">${ICON_CHEV}</i>
       </button>
-      <div class="d-focus"><span>${dayFocusLabel(es)}</span><b>${det.volume ? `${det.volume.toLocaleString()} kg` : ''}</b></div>
+      <div class="d-focus"><span>${dayFocusLabel(es)}</span></div>
       ${exRows}
     </div>`;
   }).join('');

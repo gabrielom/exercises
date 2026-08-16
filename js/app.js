@@ -703,22 +703,48 @@ function groupOf(exId) {
   const defs = SUBGROUPS[ex.cat];
   return defs && ex.group ? defs[ex.group] : CATS[ex.cat];
 }
-// The label shown on a day row: whichever série most of that day's sets belong to.
-function dayGroupLabel(entries) {
+// Everything a day's sets belong to, busiest first. A session regularly spans
+// more than one série, so naming only the biggest one misreports the day.
+function tallied(entries, of) {
   const tally = {};
-  for (const e of entries) { const g = groupOf(e.ex); if (g) tally[g] = (tally[g] || 0) + 1; }
-  const best = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
-  return best ? best[0] : '';
+  for (const e of entries) { const k = of(e); if (k) tally[k] = (tally[k] || 0) + 1; }
+  return Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([k]) => k);
 }
-function dayFocusLabel(entries) {
-  const tally = {};
-  for (const e of entries) {
-    const ex = byId[e.ex];
-    if (ex?.cat === 'gym' && GROUP_FOCUS[ex.group]) tally[GROUP_FOCUS[ex.group]] = (tally[GROUP_FOCUS[ex.group]] || 0) + 1;
+
+function dayGroupLabel(entries) {
+  const gs = tallied(entries, e => groupOf(e.ex));
+  if (gs.length < 2) return gs[0] || '';
+  // "Série F" + "Série G" reads better as "Séries F · G".
+  const parts = gs.map(g => g.match(/^(\S+)\s+(.+)$/));
+  if (parts.every(p => p && p[1] === parts[0][1])) {
+    return `${parts[0][1]}s ${parts.map(p => p[2]).join(' · ')}`;
   }
-  const best = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
-  if (!best) return dayGroupLabel(entries);
-  return best[0].replace(/\b\w/g, c => c.toUpperCase());
+  return gs.join(' · ');
+}
+
+const titleCase = s => s.replace(/\b\w/g, c => c.toUpperCase());
+
+// What the day actually worked. Each série has a focus like "back & biceps", so
+// a day across several séries is the union of their muscles, not just one of
+// them — listing a single focus told you the day was something it was not.
+function dayFocusLabel(entries) {
+  const focuses = tallied(entries, e => {
+    const ex = byId[e.ex];
+    return ex?.cat === 'gym' ? GROUP_FOCUS[ex.group] : null;
+  });
+  if (!focuses.length) return dayGroupLabel(entries);
+
+  const muscles = [];
+  for (const f of focuses) {
+    for (const m of f.split('&').map(s => s.trim())) {
+      if (m && !muscles.includes(m)) muscles.push(m);
+    }
+  }
+  if (muscles.length > 4) return `${muscles.slice(0, 4).map(titleCase).join(', ')} + more`;
+  const shown = muscles.map(titleCase);
+  return shown.length > 1
+    ? `${shown.slice(0, -1).join(', ')} & ${shown[shown.length - 1]}`
+    : shown[0];
 }
 
 function byDayMap(log) {
@@ -943,7 +969,7 @@ function renderHistory() {
       return swipeRow(`ex:${d}:${r.exId}`, `<div class="x-row">
         <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets}×${r.reps ? ` · ${r.reps} reps` : ''}${r.secs ? ` · ${fmtTime(r.secs)}` : ''}</small></span>
         <span class="x-bars">${bars}</span>
-        <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}${r.cur ? `<small>${deltaChip(r.delta)} · ${agoDay(r.sinceDay)}</small>` : ''}</span>
+        <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}${r.cur ? `<small>${deltaChip(r.delta)}${r.delta ? ` · changed ${agoDay(r.sinceDay)}` : ''}</small>` : ''}</span>
       </div>`);
     }).join('');
     return `<div class="d-open">

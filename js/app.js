@@ -86,7 +86,7 @@ function setWeight(ex, w) {
   // logged that day.
   store.logWeightChange(ex.id, from, to);
 }
-const WEIGHT_STEP = 2.5; // one plate-ish increment
+const WEIGHT_STEP = 1;
 
 // Timer duration: user override, else the programmed time for natively timed
 // exercises, else one minute (a reps target is not a duration).

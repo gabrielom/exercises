@@ -638,22 +638,50 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') resetPageZoom();
 });
 
-// The tab bar is position: fixed, which pins it to the layout viewport — and on
-// iPad that is not always what you can see. Resizing a window, rotating, or the
-// keyboard can leave the layout viewport taller than the visible area, and the
-// bar then sits mid-screen. Measure the difference and lift it by that much;
-// normally it is zero and nothing changes.
+// position: fixed pins to the *layout* viewport, which on iPad is regularly not
+// what you can see — the bar ends up floating over the middle of the window and
+// drifting as you scroll. Place it against the visual viewport instead, which
+// is by definition the visible rectangle, and undo any page scale so it keeps
+// its size. Everything else on screen can live with fixed; the bar cannot.
+const tabBar = document.querySelector('.tabbar');
+
+// env(safe-area-inset-bottom) is not readable from script, so measure it.
+function safeBottom() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;visibility:hidden;height:env(safe-area-inset-bottom,0px)';
+  document.body.appendChild(probe);
+  const h = probe.offsetHeight;
+  probe.remove();
+  return h;
+}
+let inset = 0;
+const barGap = () => (innerWidth >= 768 ? Math.max(20, inset - 6) : Math.max(14, inset - 18));
+
+let pinQueued = false;
 function pinTabBar() {
   const vv = window.visualViewport;
-  if (!vv) return;
-  const gap = Math.round(innerHeight - (vv.height + vv.offsetTop));
-  document.documentElement.style.setProperty('--vv-gap', `${Math.max(0, gap)}px`);
+  if (!vv || !tabBar) return;
+  pinQueued = false;
+  tabBar.classList.add('pinned');
+  const s = 1 / vv.scale;                        // keep its size if the page is scaled
+  const w = tabBar.offsetWidth, h = tabBar.offsetHeight;
+  const x = vv.offsetLeft + (vv.width - w * s) / 2;
+  const y = vv.offsetTop + vv.height - (h + barGap()) * s;
+  tabBar.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) scale(${s})`;
 }
-if (window.visualViewport) {
-  visualViewport.addEventListener('resize', pinTabBar);
-  visualViewport.addEventListener('scroll', pinTabBar);
+const queuePin = () => {
+  if (pinQueued) return;
+  pinQueued = true;
+  requestAnimationFrame(pinTabBar);
+};
+
+if (window.visualViewport && tabBar) {
+  inset = safeBottom();
+  visualViewport.addEventListener('resize', queuePin);
+  visualViewport.addEventListener('scroll', queuePin);
+  addEventListener('resize', queuePin);
+  addEventListener('scroll', queuePin, { passive: true });
   addEventListener('orientationchange', () => setTimeout(pinTabBar, 250));
-  addEventListener('resize', pinTabBar);
   pinTabBar();
 }
 

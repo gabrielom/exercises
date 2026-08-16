@@ -610,11 +610,8 @@ img[src^="img/gen/"] { border-radius: 18px; }
      the inset is ~34px on a notched iPhone, which would push the bar 40px up.
      Subtracting most of it lands the bar ~16px off the bottom edge there, and
      the 14px floor applies everywhere without an inset. */
-  /* --vv-gap is however much of the layout viewport sits below the visible area
-     (see pinTabBar): 0 normally, but on iPad the two can drift apart and a
-     plain fixed bottom then strands the bar mid-screen. */
   position: fixed; left: 50%;
-  bottom: calc(var(--vv-gap, 0px) + max(14px, calc(env(safe-area-inset-bottom, 0px) - 18px)));
+  bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) - 18px));
   transform: translateX(-50%);
   z-index: 30;
   display: inline-flex;            /* hugs its tabs — no gaps, no stretch */
@@ -624,6 +621,9 @@ img[src^="img/gen/"] { border-radius: 18px; }
   padding: 5px;
   box-shadow: var(--bar-shadow);
 }
+/* Taken over by pinTabBar: placed against the visual viewport from script, so
+   the CSS anchoring is switched off and the transform carries the position. */
+.tabbar.pinned { left: 0; top: 0; bottom: auto; transform-origin: 0 0; }
 .tabbar button {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 6px 16px 5px; border-radius: 17px;
@@ -636,10 +636,7 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .tabbar button.on { background: var(--accent-soft); color: var(--accent); }
 .tabbar button.on span { color: var(--ink); font-weight: 650; }
 @media (min-width: 768px) {
-  .tabbar {
-    border-radius: 26px; padding: 6px;
-    bottom: calc(var(--vv-gap, 0px) + max(20px, calc(env(safe-area-inset-bottom, 0px) - 6px)));
-  }
+  .tabbar { border-radius: 26px; padding: 6px; bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) - 6px)); }
   .tabbar button { padding: 8px 22px 7px; border-radius: 21px; gap: 3px; }
   .tabbar button span { font-size: 13px; }
   .tabbar button svg { width: 25px; height: 25px; }

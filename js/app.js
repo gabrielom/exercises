@@ -70,8 +70,13 @@ function chime(pattern) {
 
 function modeFor(ex) { return store.getPref(ex.id).mode || ex.mode; }
 function doneToday(exId) { return store.todayFor(exId).length > 0; }
-// Prescribed sets. Gym work is 3 × its target; everything else is a single go.
-const setsFor = ex => ex.sets || 1;
+// Prescribed sets — the programme's number unless it has been edited for this
+// exercise, the same way weight and reps carry an override.
+function setsFor(ex) {
+  const n = store.getPref(ex.id).sets;
+  return n === undefined || n === null ? (ex.sets || 1) : n;
+}
+const SETS_MAX = 10;
 
 // Effective weight = per-exercise override (if the user has edited it) else the
 // program default from data.js. `ex.weight === undefined` means non-gym (no weight).
@@ -385,7 +390,13 @@ function renderPlayer(slide) {
             </div>`
           : (weightFor(ex) ? `<span class="kg"><b id="pWeight">${weightFor(ex)}</b> kg</span>` : ''))
         : ''}
-        ${setsFor(ex) > 1 ? `<span class="bside">${setsFor(ex)} sets</span>` : ''}
+        ${player.editing
+          ? `<div class="wedit">
+              <button class="wbtn" data-p="sminus" aria-label="Fewer sets">−</button>
+              <span class="wval flat"><b id="pSets">${setsFor(ex)}</b> ${setsFor(ex) === 1 ? 'set' : 'sets'}</span>
+              <button class="wbtn" data-p="splus" aria-label="More sets">+</button>
+            </div>`
+          : (setsFor(ex) > 1 ? `<span class="bside">${setsFor(ex)} sets</span>` : '')}
         ${ex.side ? `<span class="bside">per side</span>` : ''}
         <button class="editbtn ${player.editing ? 'on' : ''}" data-p="edit" aria-label="${player.editing ? 'Finish editing' : 'Edit weight, reps and timer'}">
           ${player.editing ? 'OK' : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg> Edit`}
@@ -424,6 +435,13 @@ document.getElementById('player').addEventListener('click', e => {
   else if (act === 'wminus' || act === 'wplus') {
     setWeight(ex, weightFor(ex) + (act === 'wplus' ? WEIGHT_STEP : -WEIGHT_STEP));
     refreshWeight(ex);
+    navigator.vibrate?.(8);
+  }
+  else if (act === 'sminus' || act === 'splus') {
+    const n = Math.max(1, Math.min(SETS_MAX, setsFor(ex) + (act === 'splus' ? 1 : -1)));
+    store.setPref(ex.id, { sets: n });
+    const el = playerEl().querySelector('#pSets');
+    if (el) el.parentElement.innerHTML = `<b id="pSets">${n}</b> ${n === 1 ? 'set' : 'sets'}`;
     navigator.vibrate?.(8);
   }
   else if (act === 'tminus' || act === 'tplus') {
@@ -1670,7 +1688,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v69';
+const BUILD = 'v70';
 
 async function cachedVersion() {
 

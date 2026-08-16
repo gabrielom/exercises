@@ -273,6 +273,8 @@ img[src^="img/gen/"] { border-radius: 18px; }
 }
 .wval b { font-weight: 800; }
 .wval:active { background: var(--accent); color: #fff; }
+/* the sets readout is not a button — it has no long-press action of its own */
+.wval.flat:active { background: var(--accent-soft); color: var(--accent-dark); }
 .editbtn {
   display: inline-flex; align-items: center; gap: 5px;
   border: 1.5px solid var(--line-strong); border-radius: 8px;

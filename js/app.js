@@ -871,19 +871,34 @@ function weightChanges(log, wlog = store.liveWeightLog()) {
   return out.reverse();
 }
 
-// 5 weeks × 7 days ending this week, Monday-first, bucketed into 4 heat levels.
-function heatCells(byDay) {
+// Every week from the first day logged to this one, Monday-first, in rows of
+// seven bucketed into 4 heat levels. Five weeks minimum so a new log still
+// looks like a calendar; the grid scrolls when there is more.
+function heatWeeks(byDay) {
   const today = new Date();
-  const dow = (today.getDay() + 6) % 7;              // 0 = Monday
+  const dow = (today.getDay() + 6) % 7;                      // 0 = Monday
   const end = new Date(today.getTime() + (6 - dow) * dayMs); // Sunday of this week
-  const cells = [];
-  for (let i = 34; i >= 0; i--) {
-    const dt = new Date(end.getTime() - i * dayMs);
-    const key = store.localDate(dt.getTime());
-    const n = (byDay.get(key) || []).length;
-    cells.push({ key, n, future: dt > today, lvl: n === 0 ? 0 : n <= 3 ? 1 : n <= 8 ? 2 : 3 });
+  const keys = [...byDay.keys()].sort();
+  const first = keys.length ? dateOf(keys[0]) : new Date(today.getTime() - 34 * dayMs);
+  const spanDays = Math.round((end - first) / dayMs) + 1;
+  const weeks = Math.max(5, Math.ceil(spanDays / 7));
+
+  const rows = [];
+  for (let w = weeks - 1; w >= 0; w--) {
+    const cells = [];
+    for (let i = 6; i >= 0; i--) {
+      const dt = new Date(end.getTime() - (w * 7 + i) * dayMs);
+      const key = store.localDate(dt.getTime());
+      const n = (byDay.get(key) || []).length;
+      cells.push({ key, n, future: dt > today, lvl: n === 0 ? 0 : n <= 3 ? 1 : n <= 8 ? 2 : 3 });
+    }
+    // Label a row with the month it opens, but only when that month changes,
+    // so a long scroll stays readable without repeating itself.
+    const m = cells[0].key.slice(0, 7);
+    const prev = rows.length ? rows[rows.length - 1].month : null;
+    rows.push({ cells, month: m, label: m === prev ? '' : monthName(monthIdx(cells[0].key)) });
   }
-  return cells;
+  return rows;
 }
 
 const monthIdx = ymd => { const [y, m] = ymd.split('-').map(Number); return y * 12 + (m - 1); };
@@ -1004,7 +1019,7 @@ function renderHistory() {
   const weekAgo = store.localDate(Date.now() - 6 * dayMs);
   const sessions = days.filter(d => d >= weekAgo).length;
   const added = changes.reduce((a, c) => a + c.delta, 0);
-  const cells = heatCells(byDay);
+  const weeks = heatWeeks(byDay);
 
   const tiles = `
     <div class="h-tiles">
@@ -1016,13 +1031,19 @@ function renderHistory() {
       </button>
     </div>`;
 
+  const since = days.length
+    ? dateOf(days[days.length - 1]).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+    : '';
   const heat = `
     <div class="h-card heat">
-      <div class="heat-top"><span>Last 5 weeks</span>
+      <div class="heat-top"><span>${since ? `Since ${since}` : 'Last 5 weeks'}</span>
         <span class="heat-legend">less<i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i>more</span>
       </div>
-      <div class="heat-heads">${['M','T','W','T','F','S','S'].map(x => `<span>${x}</span>`).join('')}</div>
-      <div class="heat-grid">${cells.map(c => `<i class="l${c.lvl}${c.future ? ' fut' : ''}" title="${c.key} · ${c.n} sets"></i>`).join('')}</div>
+      <div class="heat-heads"><span></span>${['M','T','W','T','F','S','S'].map(x => `<span>${x}</span>`).join('')}</div>
+      <div class="heat-scroll"><div class="heat-grid">${weeks.map(w => `
+        <span class="heat-mon">${w.label}</span>
+        ${w.cells.map(c => `<i class="l${c.lvl}${c.future ? ' fut' : ''}" title="${c.key} · ${c.n} sets"></i>`).join('')}
+      `).join('')}</div></div>
     </div>`;
 
   const rows = days.slice(0, 30).map(d => {
@@ -1087,6 +1108,17 @@ function renderHistory() {
       ? `<div class="h-card list">${rows}</div>`
       : `<div class="empty sm">No sets logged yet — tap <b>Done</b> on an exercise to start a session.</div>`}
   </div>`;
+
+  // Show five weeks and open on this one; scrolling up walks back through the
+  // history. The cells are square and sized by the column width, so the height
+  // of five rows has to be measured rather than assumed.
+  const hs = view.querySelector('.heat-scroll');
+  const cell = hs?.querySelector('i');
+  if (hs && cell) {
+    const row = cell.getBoundingClientRect().height + 5;   // + grid gap
+    hs.style.maxHeight = `${Math.round(row * 5 - 5)}px`;
+    hs.scrollTop = hs.scrollHeight;
+  }
 }
 
 function renderWeights(log) {

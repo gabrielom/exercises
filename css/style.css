@@ -466,9 +466,21 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .heat-top { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: var(--muted2); }
 .heat-legend { display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; color: var(--muted); }
 .heat-legend i { width: 9px; height: 9px; border-radius: 3px; display: block; }
-.heat-heads, .heat-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+/* A month gutter, then the seven days. The grid scrolls through the whole
+   history and opens at the bottom, on this week. */
+.heat-heads, .heat-grid { display: grid; grid-template-columns: 24px repeat(7, 1fr); gap: 5px; }
 .heat-heads { margin-top: 9px; }
 .heat-heads span { font-size: 9.5px; color: var(--muted); text-align: center; }
+.heat-scroll {
+  max-height: 190px; overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; touch-action: pan-y;
+  margin-right: -4px; padding-right: 4px;
+}
+.heat-mon {
+  font-size: 9px; font-weight: 600; color: var(--muted);
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 1px; white-space: nowrap;
+}
 .heat-grid { margin-top: 4px; }
 .heat-grid i { aspect-ratio: 1; border-radius: 4px; display: block; }
 .l0 { background: var(--track); }

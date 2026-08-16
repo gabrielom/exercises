@@ -695,6 +695,7 @@ if (window.visualViewport && tabBar) {
   visualViewport.addEventListener('resize', queuePin);
   visualViewport.addEventListener('scroll', queuePin);
   addEventListener('resize', queuePin);
+  addEventListener('resize', () => { if (state.tab === 'history') fitChips(); });
   addEventListener('scroll', queuePin, { passive: true });
   addEventListener('orientationchange', () => setTimeout(pinTabBar, 250));
   addEventListener('pageshow', queuePin);
@@ -1055,7 +1056,7 @@ function renderHistory() {
     if (!open) {
       return swipeRow(`day:${d}`, `<button class="d-row" data-day="${d}">
         <span class="d-main"><b>${dayLabel(d)}</b><small>${meta}</small></span>
-        <span class="d-chips">${dayChips(es).map(c => `<span class="d-chip">${c}</span>`).join('')}</span>
+        <span class="d-chips">${dayChips(es).map(c => `<span class="d-chip">${c}</span>`).join('')}<span class="d-chip d-more" hidden>…</span></span>
         <i class="d-chev">${ICON_CHEV}</i>
       </button>`);
     }
@@ -1091,6 +1092,7 @@ function renderHistory() {
     return `<div class="d-open">
       <button class="d-row head" data-day="${d}">
         <span class="d-main"><b>${dayLabel(d)}</b><small>${meta}</small></span>
+        <span class="d-chips">${dayChips(es).map(c => `<span class="d-chip">${c}</span>`).join('')}</span>
         <i class="d-chev open">${ICON_CHEV}</i>
       </button>
       ${exRows}
@@ -1109,6 +1111,8 @@ function renderHistory() {
       : `<div class="empty sm">No sets logged yet — tap <b>Done</b> on an exercise to start a session.</div>`}
   </div>`;
 
+  fitChips();
+
   // Show five weeks and open on this one; scrolling up walks back through the
   // history. The cells are square and sized by the column width, so the height
   // of five rows has to be measured rather than assumed.
@@ -1118,6 +1122,40 @@ function renderHistory() {
     const row = cell.getBoundingClientRect().height + 5;   // + grid gap
     hs.style.maxHeight = `${Math.round(row * 5 - 5)}px`;
     hs.scrollTop = hs.scrollHeight;
+  }
+}
+
+// A closed day row stays one line: drop tags off the end until what is left
+// fits beside the day's numbers, and mark the remainder with an ellipsis. How
+// many fit depends on the text and the window, so it has to be measured. An
+// open day is exempt — there is room to show them all there.
+function fitChips() {
+  const GAP = 4;
+  for (const box of view.querySelectorAll('.d-row:not(.head) .d-chips')) {
+    const chips = [...box.querySelectorAll('.d-chip:not(.d-more)')];
+    const more = box.querySelector('.d-more');
+    if (!more) continue;
+
+    chips.forEach(c => { c.hidden = false; });
+    more.hidden = false;
+    const moreW = more.offsetWidth;      // measured while it is laid out
+    more.hidden = true;
+    // Measured with everything showing, so it is the full allowance the row
+    // gives the tags. scrollWidth is no use here: a clipped flex row reports it
+    // as the visible width, so overflow is invisible to it.
+    const budget = box.clientWidth;
+    if (!budget) continue;
+
+    let used = 0, cut = -1;
+    for (let i = 0; i < chips.length; i++) {
+      const w = chips[i].offsetWidth + (i ? GAP : 0);
+      const rest = i < chips.length - 1;               // room for "…" as well
+      if (used + w + (rest ? GAP + moreW : 0) > budget) { cut = i; break; }
+      used += w;
+    }
+    if (cut < 0) continue;
+    for (let i = cut; i < chips.length; i++) chips[i].hidden = true;
+    more.hidden = false;
   }
 }
 
@@ -1628,7 +1666,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v66';
+const BUILD = 'v67';
 
 async function cachedVersion() {
 

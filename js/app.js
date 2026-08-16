@@ -658,15 +658,29 @@ let inset = 0;
 const barGap = () => (innerWidth >= 768 ? Math.max(20, inset - 6) : Math.max(14, inset - 18));
 
 let pinQueued = false, lastPin = '';
+const typing = () => /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
+
 function pinTabBar() {
   const vv = window.visualViewport;
   if (!vv || !tabBar) return;
   pinQueued = false;
   tabBar.classList.add('pinned');
-  const s = 1 / vv.scale;                        // keep its size if the page is scaled
+
+  // Follow the visible rectangle when the page is zoomed, or while typing in
+  // this app so the bar clears our own keyboard. Otherwise sit on the window's
+  // bottom edge. A visual viewport that shrinks with nothing focused here is
+  // somebody else's keyboard — iPad shares one across windows — and lifting the
+  // bar to clear it is what strands it in the middle of the screen.
+  const zoomed = vv.scale > 1.01;
+  const follow = zoomed || typing();
+  const s = zoomed ? 1 / vv.scale : 1;           // keep its size if the page is scaled
+  const box = follow
+    ? { x: vv.offsetLeft, y: vv.offsetTop, w: vv.width, h: vv.height }
+    : { x: 0, y: 0, w: innerWidth, h: innerHeight };
+
   const w = tabBar.offsetWidth, h = tabBar.offsetHeight;
-  const x = vv.offsetLeft + (vv.width - w * s) / 2;
-  const y = vv.offsetTop + vv.height - (h + barGap()) * s;
+  const x = box.x + (box.w - w * s) / 2;
+  const y = box.y + box.h - (h + barGap()) * s;
   const t = `translate(${Math.round(x)}px, ${Math.round(y)}px) scale(${s})`;
   if (t !== lastPin) { tabBar.style.transform = t; lastPin = t; }
 }
@@ -685,6 +699,10 @@ if (window.visualViewport && tabBar) {
   addEventListener('orientationchange', () => setTimeout(pinTabBar, 250));
   addEventListener('pageshow', queuePin);
   document.addEventListener('visibilitychange', queuePin);
+  // Focus decides whether a shrunken viewport is our keyboard or someone
+  // else's, so re-place the bar as soon as that changes.
+  addEventListener('focusin', queuePin);
+  addEventListener('focusout', () => setTimeout(pinTabBar, 60));
   // The viewport can settle after load — a window animating into place, the
   // app restoring — without firing anything we listen for, which is why this
   // came and went. Re-measure on a slow tick; the write is skipped unless the
@@ -707,7 +725,7 @@ export function layoutReport() {
     `win ${n(innerWidth)}×${n(innerHeight)}`,
     vv ? `vv ${n(vv.width)}×${n(vv.height)} @${n(vv.offsetLeft)},${n(vv.offsetTop)} ×${(vv.scale || 1).toFixed(2)}` : 'vv none',
     r ? `bar ${n(r.top)}–${n(r.bottom)}` : 'bar none',
-    `gap ${barGap()} inset ${inset}`,
+    `gap ${barGap()} inset ${inset}${typing() ? ' typing' : ''}`,
   ].join(' · ');
 }
 

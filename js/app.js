@@ -955,13 +955,7 @@ function dayDetail(log, d) {
     const upTo = sessions.filter(s => s.day <= d);
     const bars = yearBuckets(upTo, d);
     const cur = upTo.length ? upTo[upTo.length - 1].w : a.w;
-    // walk back to the session where the weight last changed
-    let delta = 0, sinceDay = upTo[0]?.day || d;
-    for (let i = upTo.length - 1; i > 0; i--) {
-      if (upTo[i].w !== upTo[i - 1].w) { delta = upTo[i].w - upTo[i - 1].w; sinceDay = upTo[i].day; break; }
-      sinceDay = upTo[i - 1].day;
-    }
-    rows.push({ exId, ...a, bars, cur, delta, sinceDay });
+    rows.push({ exId, ...a, bars, cur });
   }
   return { entries, rows };
 }
@@ -1094,7 +1088,7 @@ function renderHistory() {
       return swipeRow(`ex:${d}:${r.exId}`, `<div class="x-row">
         <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets}×${r.reps ? ` · ${r.reps} reps` : ''}${r.secs ? ` · ${fmtTime(r.secs)}` : ''}</small></span>
         <span class="x-bars">${bars}</span>
-        <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}${r.cur ? `<small>${deltaChip(r.delta)}${r.delta ? ` · changed ${agoDay(r.sinceDay)}` : ''}</small>` : ''}</span>
+        <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}</span>
       </div>`);
     };
 
@@ -1688,7 +1682,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v70';
+const BUILD = 'v71';
 
 async function cachedVersion() {
 

@@ -638,6 +638,25 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') resetPageZoom();
 });
 
+// The tab bar is position: fixed, which pins it to the layout viewport — and on
+// iPad that is not always what you can see. Resizing a window, rotating, or the
+// keyboard can leave the layout viewport taller than the visible area, and the
+// bar then sits mid-screen. Measure the difference and lift it by that much;
+// normally it is zero and nothing changes.
+function pinTabBar() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const gap = Math.round(innerHeight - (vv.height + vv.offsetTop));
+  document.documentElement.style.setProperty('--vv-gap', `${Math.max(0, gap)}px`);
+}
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', pinTabBar);
+  visualViewport.addEventListener('scroll', pinTabBar);
+  addEventListener('orientationchange', () => setTimeout(pinTabBar, 250));
+  addEventListener('resize', pinTabBar);
+  pinTabBar();
+}
+
 function refreshWeight(ex) {
   const el = playerEl().querySelector('#pWeight');
   if (el) el.textContent = weightFor(ex);

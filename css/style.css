@@ -528,6 +528,7 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .w-row { display: flex; align-items: center; gap: 10px; padding: 10px 13px; }
 
 .empty { text-align: center; color: var(--muted2); padding: 48px 20px; font-size: 14px; }
+.empty.sm { padding: 22px 20px; font-size: 12.5px; }
 .databar { display: flex; gap: 18px; justify-content: center; margin-top: 22px; }
 .databar button { font-size: 12px; font-weight: 600; color: var(--muted2); padding: 6px 8px; border-radius: 8px; }
 .databar .danger { color: var(--danger); }

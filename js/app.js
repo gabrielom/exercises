@@ -674,7 +674,10 @@ function renderHistory() {
   if (state.hView === 'gear') return renderGear();
   if (state.hView === 'weights') return renderWeights(log);
 
-  if (!log.length) {
+  // Weight changes are history too — the screen is only empty when there is
+  // neither a logged set nor a recorded weight change to show.
+  const changes = weightChanges(log);
+  if (!log.length && !changes.length) {
     view.innerHTML = `<div class="history-wrap">${historyEmpty()}</div>`;
     return;
   }
@@ -683,7 +686,6 @@ function renderHistory() {
   const streak = streakDays(days);
   const weekAgo = store.localDate(Date.now() - 6 * dayMs);
   const sessions = days.filter(d => d >= weekAgo).length;
-  const changes = weightChanges(log);
   const added = changes.reduce((a, c) => a + c.delta, 0);
   const cells = heatCells(byDay);
 
@@ -750,7 +752,9 @@ function renderHistory() {
     ${tiles}
     ${heat}
     <div class="h-lab">Recent</div>
-    <div class="h-card list">${rows}</div>
+    ${rows
+      ? `<div class="h-card list">${rows}</div>`
+      : `<div class="empty sm">No sets logged yet — tap <b>Done</b> on an exercise to start a session.</div>`}
   </div>`;
 }
 

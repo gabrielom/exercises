@@ -1,5 +1,5 @@
 // Cache-first app-shell service worker. Bump VERSION on every deploy.
-const VERSION = "exercises-v57";
+const VERSION = "exercises-v58";
 const SHELL = [
   "./",
   "index.html",
@@ -149,6 +149,17 @@ self.addEventListener("activate", e => {
       .then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// The page asks its controller which build is actually serving it — the cache
+// list only says what has been downloaded, which can be a version ahead.
+self.addEventListener("message", e => {
+  if (e.data !== "version") return;
+  const reply = { version: VERSION };
+  // Answer on the port the page transferred; e.source would go to its global
+  // message handler instead, which is not what is listening.
+  if (e.ports && e.ports[0]) e.ports[0].postMessage(reply);
+  else e.source?.postMessage(reply);
 });
 
 self.addEventListener("fetch", e => {

@@ -1120,18 +1120,28 @@ function renderGear() {
   </div>`;
   appVersion().then(v => {
     const el = document.getElementById('appVer');
-    if (el) el.textContent = v ? v.replace('exercises-', '') : 'not cached';
+    if (!el) return;
+    el.textContent = v.label;
+    if (v.stale) {
+      el.classList.add('stale');
+      const btn = document.querySelector('button[data-act="update"]');
+      if (btn) btn.textContent = `Load ${v.ready || 'update'}`;
+    }
   });
 }
 
+// Reloads when a newer build is sitting downloaded but not yet running, which
+// is the state the auto-update leaves the app in if it could not reload at the
+// time (mid-workout, say).
 async function checkForUpdate() {
   const reg = await navigator.serviceWorker?.getRegistration();
   if (!reg) { toast('No service worker'); return; }
   toast('Checking…');
   try {
     await reg.update();
-    // A newer worker skips waiting and claims the page, which reloads us.
-    toast(reg.installing || reg.waiting ? 'Updating…' : 'Up to date');
+    const v = await appVersion();
+    if (v.stale || reg.waiting) { toast('Updating…'); setTimeout(() => location.reload(), 400); return; }
+    toast(`Up to date · ${v.label}`);
   } catch {
     toast('Could not check — no connection?');
   }
@@ -1520,12 +1530,39 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// The active cache is named after the deployed version, so it says exactly
-// which build this device is running.
-export async function appVersion() {
+// Which build is actually running, and which one is downloaded. They differ
+// while an update is waiting to be picked up, and reporting only the cache — as
+// this used to — claims the new version is live when the old code is still
+// executing, which is worse than saying nothing.
+const shortVer = v => (v || '').replace('exercises-', '');
+
+function runningVersion() {
+  const sw = navigator.serviceWorker?.controller;
+  if (!sw) return Promise.resolve(null);
+  return new Promise(resolve => {
+    const ch = new MessageChannel();
+    const done = v => { clearTimeout(t); resolve(v); };
+    const t = setTimeout(() => done(null), 800);   // a build too old to answer
+    ch.port1.onmessage = e => done(e.data?.version || null);
+    try { sw.postMessage('version', [ch.port2]); } catch { done(null); }
+  });
+}
+
+async function cachedVersion() {
   try {
     const keys = await caches.keys();
     const n = k => Number((k.match(/-v(\d+)$/) || [])[1] || 0);
     return keys.filter(k => k.startsWith('exercises-v')).sort((a, b) => n(a) - n(b)).pop() || null;
   } catch { return null; }
+}
+
+export async function appVersion() {
+  const [running, cached] = await Promise.all([runningVersion(), cachedVersion()]);
+  if (!running && !cached) return { label: 'not cached', stale: false };
+  if (!running) return { label: `${shortVer(cached)} downloaded`, stale: true };
+  return {
+    label: shortVer(running),
+    stale: !!cached && cached !== running,
+    ready: shortVer(cached),
+  };
 }

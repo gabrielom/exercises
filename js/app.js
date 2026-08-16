@@ -585,21 +585,58 @@ addEventListener('keydown', e => {
 });
 
 // ————— no zooming the app itself —————
-// A fixed layout has nothing to zoom into, and an accidental pinch leaves the
-// chrome stranded off-screen. Safari ignores user-scalable=no, so the gesture
-// events have to be refused directly; ctrl+wheel is the trackpad pinch.
+// A fixed layout has nothing to zoom into, and a stray pinch leaves the chrome
+// stranded — the tab bar is position: fixed, so a zoomed page anchors it to the
+// layout viewport and it ends up floating mid-screen. Safari ignores
+// user-scalable=no, so the gestures have to be refused directly.
+
+// The viewer is not an exception here: it zooms the picture with a transform of
+// its own, so a native page zoom underneath it is just as wrong. Safari's
+// gesture events are the ones that actually drive iOS page zoom, and refusing
+// them leaves touch and pointer events — which the viewer runs on — untouched.
 for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
-  document.addEventListener(type, e => {
-    if (viewerEl().hidden) e.preventDefault();
-  }, { passive: false });
+  document.addEventListener(type, e => e.preventDefault(), { passive: false });
 }
-document.addEventListener('wheel', e => {
-  if (e.ctrlKey && viewerEl().hidden) e.preventDefault();
+// Trackpad pinch on iPad and Mac arrives as a ctrl-modified wheel. The viewer
+// has already turned its own copy of this into an image zoom.
+document.addEventListener('wheel', e => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+
+// Outside the viewer, refuse a pinch from its first moment rather than waiting
+// for it to move — iPadOS starts scaling early. Inside, the pointer stream is
+// left completely alone so the viewer's own pinch is never disturbed.
+const inViewer = e => !!e.target?.closest?.('#viewer');
+document.addEventListener('touchstart', e => {
+  if (e.touches.length > 1 && !inViewer(e)) e.preventDefault();
 }, { passive: false });
-// Belt and braces for iOS: refuse the second touch of a pinch outside the viewer.
 document.addEventListener('touchmove', e => {
-  if (e.touches.length > 1 && viewerEl().hidden) e.preventDefault();
+  if (e.touches.length > 1 && !inViewer(e)) e.preventDefault();
 }, { passive: false });
+document.addEventListener('dblclick', e => { if (!inViewer(e)) e.preventDefault(); }, { passive: false });
+
+// Whatever slips through, snap the page back to 1×. Rewriting the viewport tag
+// is the only thing that makes iOS drop an existing zoom; it needs a value it
+// has not already got, hence the two-step.
+const VIEWPORT = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+let unzooming = false;
+function resetPageZoom() {
+  const vp = window.visualViewport;
+  if (unzooming || !vp || vp.scale <= 1.01) return;
+  const meta = document.querySelector('meta[name=viewport]');
+  if (!meta) return;
+  unzooming = true;
+  meta.content = VIEWPORT.replace('maximum-scale=1', 'maximum-scale=0.99');
+  // Held for a moment rather than a single frame — iOS does not always act on a
+  // viewport change it sees for one tick.
+  setTimeout(() => {
+    meta.content = VIEWPORT;
+    setTimeout(() => { unzooming = false; }, 250);
+  }, 120);
+}
+window.visualViewport?.addEventListener('resize', resetPageZoom);
+window.visualViewport?.addEventListener('scroll', resetPageZoom);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') resetPageZoom();
+});
 
 function refreshWeight(ex) {
   const el = playerEl().querySelector('#pWeight');

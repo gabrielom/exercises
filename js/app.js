@@ -657,7 +657,7 @@ function safeBottom() {
 let inset = 0;
 const barGap = () => (innerWidth >= 768 ? Math.max(20, inset - 6) : Math.max(14, inset - 18));
 
-let pinQueued = false;
+let pinQueued = false, lastPin = '';
 function pinTabBar() {
   const vv = window.visualViewport;
   if (!vv || !tabBar) return;
@@ -667,7 +667,8 @@ function pinTabBar() {
   const w = tabBar.offsetWidth, h = tabBar.offsetHeight;
   const x = vv.offsetLeft + (vv.width - w * s) / 2;
   const y = vv.offsetTop + vv.height - (h + barGap()) * s;
-  tabBar.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) scale(${s})`;
+  const t = `translate(${Math.round(x)}px, ${Math.round(y)}px) scale(${s})`;
+  if (t !== lastPin) { tabBar.style.transform = t; lastPin = t; }
 }
 const queuePin = () => {
   if (pinQueued) return;
@@ -682,7 +683,32 @@ if (window.visualViewport && tabBar) {
   addEventListener('resize', queuePin);
   addEventListener('scroll', queuePin, { passive: true });
   addEventListener('orientationchange', () => setTimeout(pinTabBar, 250));
+  addEventListener('pageshow', queuePin);
+  document.addEventListener('visibilitychange', queuePin);
+  // The viewport can settle after load — a window animating into place, the
+  // app restoring — without firing anything we listen for, which is why this
+  // came and went. Re-measure on a slow tick; the write is skipped unless the
+  // answer actually moved.
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    pinTabBar();
+    const diag = document.getElementById('layoutDiag');
+    if (diag) diag.textContent = layoutReport();
+  }, 1000);
   pinTabBar();
+}
+
+// What the bar was positioned from, for when it still lands in the wrong place.
+export function layoutReport() {
+  const vv = window.visualViewport;
+  const r = tabBar?.getBoundingClientRect();
+  const n = v => Math.round(v ?? -1);
+  return [
+    `win ${n(innerWidth)}×${n(innerHeight)}`,
+    vv ? `vv ${n(vv.width)}×${n(vv.height)} @${n(vv.offsetLeft)},${n(vv.offsetTop)} ×${(vv.scale || 1).toFixed(2)}` : 'vv none',
+    r ? `bar ${n(r.top)}–${n(r.bottom)}` : 'bar none',
+    `gap ${barGap()} inset ${inset}`,
+  ].join(' · ');
 }
 
 function refreshWeight(ex) {
@@ -1124,6 +1150,7 @@ function renderGear() {
       <span>Version <b id="appVer">…</b></span>
       <button data-act="update">Check for update</button>
     </div>
+    <div class="verline diag" id="layoutDiag">${layoutReport()}</div>
     <input type="file" id="importFile" accept="application/json" hidden>
   </div>`;
   appVersion().then(v => {

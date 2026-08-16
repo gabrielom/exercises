@@ -369,7 +369,7 @@ function renderPlayer(slide) {
     </div>
     <div class="p-segments ${player.list.length > 24 ? 'many' : ''}">${player.list.map((_, k) => `<i class="${k <= player.idx ? 'done' : ''}"></i>`).join('')}</div>
     <div class="p-body ${slide ? 'slide' : ''}">
-      <div class="p-img"><img src="${imgFor(ex.id)}" alt=""></div>
+      <button class="p-img" data-p="zoom" aria-label="View image full screen"><img src="${imgFor(ex.id)}" alt=""></button>
       <div class="p-name">${ex.name}</div>
       ${ex.pt ? `<div class="p-pt">${ex.pt}</div>` : ''}
       ${ex.cue ? `<p class="p-cue">${ex.cue}</p>` : ''}
@@ -428,6 +428,7 @@ document.getElementById('player').addEventListener('click', e => {
     if (el) el.textContent = fmtTime(timeFor(ex));
     navigator.vibrate?.(8);
   }
+  else if (act === 'zoom') openViewer(imgFor(ex.id), ex.name);
   else if (act === 'wtype') toast('Long-press to type a weight');
   else if (act === 'mode') { store.setPref(ex.id, { mode: btn.dataset.mode }); renderPlayer(false); }
   else if (act === 'done') {
@@ -444,6 +445,161 @@ document.getElementById('player').addEventListener('click', e => {
     advance();
   }
 });
+
+// ————— image viewer —————
+// The only place in the app where zooming is wanted. Pinch and double-tap are
+// implemented here rather than left to the browser, because page zoom is off
+// everywhere (it only mangles a fixed layout).
+
+const MAX_ZOOM = 5, TAP_ZOOM = 2.5;
+const viewerEl = () => document.getElementById('viewer');
+const vw = { s: 1, x: 0, y: 0, pts: new Map(), pinch: null, drag: null, lastTap: 0, moved: false };
+
+function vImg() { return viewerEl().querySelector('img'); }
+
+function vApply() {
+  const img = vImg();
+  if (!img) return;
+  // Keep the picture from being dragged off-screen: at 1× it stays centred, and
+  // beyond that it may only move by however much it overflows.
+  const r = { w: img.offsetWidth, h: img.offsetHeight };
+  const maxX = Math.max(0, (r.w * vw.s - innerWidth) / 2);
+  const maxY = Math.max(0, (r.h * vw.s - innerHeight) / 2);
+  vw.x = Math.max(-maxX, Math.min(maxX, vw.x));
+  vw.y = Math.max(-maxY, Math.min(maxY, vw.y));
+  img.style.transform = `translate(${vw.x}px, ${vw.y}px) scale(${vw.s})`;
+  viewerEl().classList.toggle('zoomed', vw.s > 1.01);
+}
+
+// Screen point -> the image-local point under it, so a gesture can hold that
+// same point in place while the scale changes.
+function vLocal(px, py) {
+  const img = vImg();
+  const c = img.getBoundingClientRect();
+  const cx = c.left + c.width / 2 - vw.x, cy = c.top + c.height / 2 - vw.y;
+  return { u: (px - cx - vw.x) / vw.s, v: (py - cy - vw.y) / vw.s, cx, cy };
+}
+
+function vZoomTo(s, px, py) {
+  const { u, v, cx, cy } = vLocal(px, py);
+  vw.s = Math.max(1, Math.min(MAX_ZOOM, s));
+  vw.x = px - cx - u * vw.s;
+  vw.y = py - cy - v * vw.s;
+  if (vw.s <= 1.01) { vw.s = 1; vw.x = 0; vw.y = 0; }
+  vApply();
+}
+
+function openViewer(src, alt) {
+  const el = viewerEl();
+  vw.s = 1; vw.x = 0; vw.y = 0; vw.pts.clear(); vw.pinch = null; vw.drag = null;
+  el.innerHTML = `<button class="v-close" data-v="close" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button><img src="${src}" alt="${alt || ''}" draggable="false">`;
+  el.hidden = false;
+  document.body.style.overflow = 'hidden';
+  vApply();
+}
+
+function closeViewer() {
+  const el = viewerEl();
+  if (el.hidden) return;
+  el.hidden = true;
+  el.innerHTML = '';
+  if (!player.open) document.body.style.overflow = '';
+}
+
+{
+  const el = document.getElementById('viewer');
+  const dist = ([a, b]) => Math.hypot(a.x - b.x, a.y - b.y);
+  const mid = ([a, b]) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+  el.addEventListener('pointerdown', e => {
+    if (e.target.closest('[data-v="close"]')) return;
+    el.setPointerCapture?.(e.pointerId);
+    vw.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    vw.moved = false;
+    const pts = [...vw.pts.values()];
+    if (pts.length === 2) {
+      vw.drag = null;
+      vw.pinch = { d: dist(pts), s: vw.s, m: mid(pts) };
+    } else if (pts.length === 1) {
+      vw.drag = { x: e.clientX, y: e.clientY, ox: vw.x, oy: vw.y };
+    }
+  });
+
+  el.addEventListener('pointermove', e => {
+    if (!vw.pts.has(e.pointerId)) return;
+    vw.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = [...vw.pts.values()];
+    if (vw.pinch && pts.length === 2) {
+      const d = dist(pts), m = mid(pts);
+      vw.moved = true;
+      // Anchor on the midpoint of the two fingers as it moves and spreads.
+      const { u, v, cx, cy } = vLocal(vw.pinch.m.x, vw.pinch.m.y);
+      vw.s = Math.max(1, Math.min(MAX_ZOOM, vw.pinch.s * (d / vw.pinch.d)));
+      vw.x = m.x - cx - u * vw.s;
+      vw.y = m.y - cy - v * vw.s;
+      vw.pinch.m = m;
+      vw.pinch.d = d;
+      vw.pinch.s = vw.s;
+      vApply();
+    } else if (vw.drag && pts.length === 1 && vw.s > 1.01) {
+      const dx = e.clientX - vw.drag.x, dy = e.clientY - vw.drag.y;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) vw.moved = true;
+      vw.x = vw.drag.ox + dx;
+      vw.y = vw.drag.oy + dy;
+      vApply();
+    }
+  });
+
+  const end = e => {
+    if (!vw.pts.delete(e.pointerId)) return;
+    if (vw.pts.size < 2) vw.pinch = null;
+    if (vw.pts.size === 0) {
+      vw.drag = null;
+      if (vw.moved) return;
+      const now = Date.now();
+      if (now - vw.lastTap < 300) {           // double tap toggles zoom
+        vw.lastTap = 0;
+        vZoomTo(vw.s > 1.01 ? 1 : TAP_ZOOM, e.clientX, e.clientY);
+      } else {
+        vw.lastTap = now;
+        // A single tap while zoomed out dismisses; wait to be sure it is single.
+        setTimeout(() => { if (vw.lastTap === now && vw.s <= 1.01) closeViewer(); }, 300);
+      }
+    }
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('click', e => { if (e.target.closest('[data-v="close"]')) closeViewer(); });
+  // Trackpad pinch inside the viewer zooms the image instead of the page.
+  el.addEventListener('wheel', e => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    vZoomTo(vw.s * (1 - e.deltaY / 180), e.clientX, e.clientY);
+  }, { passive: false });
+}
+
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !viewerEl().hidden) closeViewer();
+});
+
+// ————— no zooming the app itself —————
+// A fixed layout has nothing to zoom into, and an accidental pinch leaves the
+// chrome stranded off-screen. Safari ignores user-scalable=no, so the gesture
+// events have to be refused directly; ctrl+wheel is the trackpad pinch.
+for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(type, e => {
+    if (viewerEl().hidden) e.preventDefault();
+  }, { passive: false });
+}
+document.addEventListener('wheel', e => {
+  if (e.ctrlKey && viewerEl().hidden) e.preventDefault();
+}, { passive: false });
+// Belt and braces for iOS: refuse the second touch of a pinch outside the viewer.
+document.addEventListener('touchmove', e => {
+  if (e.touches.length > 1 && viewerEl().hidden) e.preventDefault();
+}, { passive: false });
 
 function refreshWeight(ex) {
   const el = playerEl().querySelector('#pWeight');

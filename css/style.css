@@ -70,7 +70,9 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { -webkit-text-size-adjust: 100%; }
+/* pan only — no pinch-zoom and no double-tap-to-zoom anywhere in the app.
+   The image viewer opts back in with touch-action: none and its own gestures. */
+html { -webkit-text-size-adjust: 100%; touch-action: pan-x pan-y; }
 body {
   background: var(--bg);
   color: var(--ink);
@@ -221,8 +223,35 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .p-body.slide { animation: slidein .22s ease; }
 @keyframes slidein { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .p-body.slide { animation: none; } }
-.p-img { width: min(52vw, 190px); }
-.p-img img { width: 100%; border-radius: 14px; }
+.p-img { width: min(52vw, 190px); background: none; padding: 0; cursor: zoom-in; }
+.p-img img { width: 100%; border-radius: 14px; display: block; }
+
+/* ————— image viewer ————— */
+.viewer[hidden] { display: none; }
+.viewer {
+  position: fixed; inset: 0; z-index: 90;
+  background: var(--bg);
+  display: grid; place-items: center;
+  overflow: hidden; overscroll-behavior: contain;
+  touch-action: none;               /* every gesture in here is handled by hand */
+  cursor: zoom-in;
+}
+.viewer.zoomed { cursor: grab; }
+.viewer img {
+  max-width: 100%; max-height: 100%;
+  transform-origin: center;
+  -webkit-user-select: none; user-select: none; -webkit-user-drag: none;
+}
+.v-close {
+  position: absolute; z-index: 1;
+  top: max(14px, calc(env(safe-area-inset-top, 0px) + 8px));
+  right: max(14px, calc(env(safe-area-inset-right, 0px) + 8px));
+  width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--card); border: 1px solid var(--line); color: var(--ink);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+.v-close svg { width: 19px; height: 19px; }
 .p-name { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin-top: 8px; }
 .p-pt { font-size: 13px; color: var(--muted2); }
 .p-cue { font-size: 12.5px; color: var(--muted2); margin-top: 4px; min-height: 1.4em; }

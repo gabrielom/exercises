@@ -757,32 +757,6 @@ function groupOf(exId) {
   const defs = SUBGROUPS[ex.cat];
   return defs && ex.group ? defs[ex.group] : CATS[ex.cat];
 }
-// Everything a day's sets belong to, busiest first. A session regularly spans
-// more than one série, so naming only the biggest one misreports the day.
-function tallied(entries, of) {
-  const tally = {};
-  for (const e of entries) { const k = of(e); if (k) tally[k] = (tally[k] || 0) + 1; }
-  return Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([k]) => k);
-}
-
-// One chip per thing the day touched. Séries are the exception: they collapse
-// into a single "Séries E · F", since the letters read as a set. Everything
-// else — stretching blocks, calisthenics — keeps its own name.
-function dayChips(entries) {
-  const series = [], rest = [];
-  for (const label of tallied(entries, e => groupOf(e.ex))) {
-    const m = label.match(/^Série\s+(.+)$/);
-    if (m) series.push(m[1]); else rest.push(label);
-  }
-  series.sort();
-  const chips = [];
-  if (series.length === 1) chips.push(`Série ${series[0]}`);
-  else if (series.length) chips.push(`Séries ${series.join(' · ')}`);
-  return chips.concat(rest);
-}
-
-function dayGroupLabel(entries) { return dayChips(entries).join(' · '); }
-
 // Ordinary sentence case — a capital to open and lower case after it. A lone
 // letter is left alone, otherwise "Série G" would come out as "Série g".
 function sentenceCase(phrase) {
@@ -799,31 +773,6 @@ function sectionLabel(exId) {
   const name = groupOf(exId) || '';
   const focus = ex.cat === 'gym' ? GROUP_FOCUS[ex.group] : null;
   return [name, focus].filter(Boolean).map(sentenceCase).join(' · ');
-}
-
-const titleCase = s => s.replace(/\b\w/g, c => c.toUpperCase());
-
-// What the day actually worked. Each série has a focus like "back & biceps", so
-// a day across several séries is the union of their muscles, not just one of
-// them — listing a single focus told you the day was something it was not.
-function dayFocusLabel(entries) {
-  const focuses = tallied(entries, e => {
-    const ex = byId[e.ex];
-    return ex?.cat === 'gym' ? GROUP_FOCUS[ex.group] : null;
-  });
-  if (!focuses.length) return dayGroupLabel(entries);
-
-  const muscles = [];
-  for (const f of focuses) {
-    for (const m of f.split('&').map(s => s.trim())) {
-      if (m && !muscles.includes(m)) muscles.push(m);
-    }
-  }
-  if (muscles.length > 4) return `${muscles.slice(0, 4).map(titleCase).join(', ')} + more`;
-  const shown = muscles.map(titleCase);
-  return shown.length > 1
-    ? `${shown.slice(0, -1).join(', ')} & ${shown[shown.length - 1]}`
-    : shown[0];
 }
 
 function byDayMap(log) {
@@ -1102,7 +1051,6 @@ function renderHistory() {
         <span class="d-main"><b>${dayLabel(d)}</b><small>${meta}</small></span>
         <i class="d-chev open">${ICON_CHEV}</i>
       </button>
-      <div class="d-focus"><span>${dayFocusLabel(es)}</span></div>
       ${exRows}
     </div>`;
   }).join('');

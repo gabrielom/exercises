@@ -44,39 +44,25 @@ export function localDate(ts = Date.now()) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-export function logSet(entry) {
+// Log the same set `n` times — a prescription of 3 × 30 recorded in one go.
+// The timestamps must differ: logKey is built from t, and sync's union merge
+// folds identical keys into one, which would quietly drop all but the first.
+export function logSets(entry, n = 1) {
   const log = get('log', []);
-  log.push({ t: Date.now(), d: localDate(), ...entry });
+  const t = Date.now(), d = localDate();
+  for (let i = 0; i < n; i++) log.push({ t: t + i, d, ...entry });
   set('log', log);
   dispatchEvent(new CustomEvent('exercises:changed'));
   return log;
 }
 
+export function logSet(entry) { return logSets(entry, 1); }
+
 // Stable identity of a log entry — also used by sync's union merge.
 export const logKey = e => `${e.t}|${e.ex}|${e.side || ''}`;
 
-// Remove the most recent set logged today for an exercise (quick-log toggle
-// off). Leaves a tombstone so sync deletes it everywhere instead of
-// resurrecting it from the gist.
-export function undoLastToday(exId) {
-  const log = get('log', []);
-  const today = localDate();
-  for (let i = log.length - 1; i >= 0; i--) {
-    if (log[i].ex === exId && log[i].d === today) {
-      const [e] = log.splice(i, 1);
-      const del = get('deleted', []);
-      del.push(logKey(e));
-      set('deleted', del);
-      set('log', log);
-      dispatchEvent(new CustomEvent('exercises:changed'));
-      return e;
-    }
-  }
-  return null;
-}
-
-// Delete every entry matching `pred` (History swipe-to-delete). Like
-// undoLastToday it tombstones them, otherwise the next gist sync would
+// Delete every entry matching `pred` (History swipe-to-delete, and untoggling
+// an exercise on the grid). Tombstones them, otherwise the next gist sync would
 // union-merge them straight back in. Returns what was removed so it can be
 // restored by an undo.
 export function deleteEntries(pred) {

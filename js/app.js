@@ -70,6 +70,8 @@ function chime(pattern) {
 
 function modeFor(ex) { return store.getPref(ex.id).mode || ex.mode; }
 function doneToday(exId) { return store.todayFor(exId).length > 0; }
+// Prescribed sets. Gym work is 3 × its target; everything else is a single go.
+const setsFor = ex => ex.sets || 1;
 
 // Effective weight = per-exercise override (if the user has edited it) else the
 // program default from data.js. `ex.weight === undefined` means non-gym (no weight).
@@ -114,7 +116,7 @@ function gcardHTML(ex) {
   const mode = modeFor(ex);
   const logged = doneToday(ex.id);
   const meta = `${weightFor(ex) ? `<span class="kg">${weightFor(ex)} kg ·</span>` : ''}
-    <span>${mode === 'time' ? `⏱ ${fmtTime(timeFor(ex))}` : `${store.getPref(ex.id).reps || ex.target} reps`}${ex.side ? ' · per side' : ''}</span>`;
+    <span>${setsFor(ex) > 1 ? `${setsFor(ex)} × ` : ''}${mode === 'time' ? `⏱ ${fmtTime(timeFor(ex))}` : `${store.getPref(ex.id).reps || ex.target} reps`}${ex.side ? ' · per side' : ''}</span>`;
   return `<div class="gcard" data-ex="${ex.id}" role="button" tabindex="0">
     <div class="g-img">
       <img src="${imgFor(ex.id)}" alt="" loading="lazy">
@@ -127,11 +129,12 @@ function gcardHTML(ex) {
   </div>`;
 }
 
-// Quick-log toggle: unchecked → log a set (same record as finishing it in the
-// player); checked → remove today's most recent set for that exercise.
+// Quick-log toggle: unchecked → log the whole prescription (the same record as
+// finishing it in the player); checked → take today's sets for it back off.
 function quickLog(ex) {
   if (doneToday(ex.id)) {
-    store.undoLastToday(ex.id);
+    const today = store.localDate();
+    store.deleteEntries(e => e.d === today && e.ex === ex.id);
     navigator.vibrate?.(12);
     toast(`Removed · ${ex.name}`);
   } else {
@@ -139,7 +142,7 @@ function quickLog(ex) {
     const v = mode === 'reps' ? (store.getPref(ex.id).reps || ex.target) : timeFor(ex);
     const entry = { ex: ex.id, mode, v };
     if (weightFor(ex)) entry.w = weightFor(ex);
-    store.logSet(entry);
+    store.logSets(entry, setsFor(ex));
     navigator.vibrate?.(20);
     toast(`Logged · ${ex.name} ✓`);
   }
@@ -274,7 +277,7 @@ function logCurrent(value) {
   const mode = modeFor(ex);
   const entry = { ex: ex.id, mode, v: value };
   if (weightFor(ex)) entry.w = weightFor(ex);
-  store.logSet(entry);
+  store.logSets(entry, setsFor(ex));          // one tap records the prescription
   if (mode === 'reps') store.setPref(ex.id, { reps: value });
 }
 
@@ -382,6 +385,7 @@ function renderPlayer(slide) {
             </div>`
           : (weightFor(ex) ? `<span class="kg"><b id="pWeight">${weightFor(ex)}</b> kg</span>` : ''))
         : ''}
+        ${setsFor(ex) > 1 ? `<span class="bside">${setsFor(ex)} sets</span>` : ''}
         ${ex.side ? `<span class="bside">per side</span>` : ''}
         <button class="editbtn ${player.editing ? 'on' : ''}" data-p="edit" aria-label="${player.editing ? 'Finish editing' : 'Edit weight, reps and timer'}">
           ${player.editing ? 'OK' : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg> Edit`}
@@ -441,7 +445,7 @@ document.getElementById('player').addEventListener('click', e => {
       logCurrent(Math.max(1, elapsed));
     }
     navigator.vibrate?.(30);
-    toast(`Logged · ${ex.name}`);
+    toast(`Logged · ${ex.name}${setsFor(ex) > 1 ? ` · ${setsFor(ex)} sets` : ''}`);
     advance();
   }
 });
@@ -1666,7 +1670,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v67';
+const BUILD = 'v68';
 
 async function cachedVersion() {
 

@@ -512,7 +512,7 @@ img[src^="img/gen/"] { border-radius: 18px; }
 /* section header inside an expanded day, one per série / stretching block */
 .x-head {
   padding: 9px 13px 3px;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
   color: var(--muted); background: var(--day-body);
 }
 .swipe + .x-head { border-top: 1px solid var(--track); }

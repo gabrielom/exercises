@@ -757,14 +757,22 @@ function dayChips(entries) {
 
 function dayGroupLabel(entries) { return dayChips(entries).join(' · '); }
 
+// Ordinary sentence case — a capital to open and lower case after it. A lone
+// letter is left alone, otherwise "Série G" would come out as "Série g".
+function sentenceCase(phrase) {
+  const words = phrase.split(' ').map(w => (w.length === 1 && /\p{Lu}/u.test(w) ? w : w.toLowerCase()));
+  const out = words.join(' ');
+  return out.charAt(0).toUpperCase() + out.slice(1);
+}
+
 // The série (or stretching block) a row belongs to, named with its focus so a
-// section header says what it worked: "Série G · Back & Biceps".
+// section header says what it worked: "Série G · Back & biceps".
 function sectionLabel(exId) {
   const ex = byId[exId];
   if (!ex) return '';
   const name = groupOf(exId) || '';
   const focus = ex.cat === 'gym' ? GROUP_FOCUS[ex.group] : null;
-  return focus ? `${name} · ${titleCase(focus)}` : name;
+  return [name, focus].filter(Boolean).map(sentenceCase).join(' · ');
 }
 
 const titleCase = s => s.replace(/\b\w/g, c => c.toUpperCase());

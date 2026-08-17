@@ -16,7 +16,7 @@ const seriesSeconds = s => s.slots.length * SLOT_SECONDS;
 // "Série 2 · Psoas & Hamstrings" → "Série 2". The blocks it covers are listed
 // under it on the card instead of being squeezed into the heading.
 const seriesTitle = s => s.name.split(' · ')[0];
-const seriesBlocks = s => s.blocks.join(', ');
+const seriesBlocks = s => s.blocks.join(' · ');
 const fmtMins = s => `~${Math.round(seriesSeconds(s) / 60)} min`;
 
 let container = null;

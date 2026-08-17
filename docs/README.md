@@ -1,5 +1,10 @@
 # Reference archive
 
+[`DESIGN-BRIEF-04.md`](DESIGN-BRIEF-04.md) is the **current** document: every change made to
+the app since design handoff 03 landed, written so the design side can bring its boards back in
+line with the shipped code, plus the one problem still open (the routine player's up-next rail
+sitting behind the tab bar). Start there. The rest of this folder is history.
+
 [`HANDOFF.md`](HANDOFF.md) is the **initial reference handoff for this project, written in a
 different (earlier) chat thread** — the session that first designed and built the app in
 July 2026. It was carried over into this repo so the original material survives: the brief

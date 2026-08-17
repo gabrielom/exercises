@@ -341,8 +341,10 @@ img[src^="img/gen/"] { border-radius: 18px; }
 @media (min-width: 768px) { .sc-grid { grid-template-columns: 1fr 1fr; gap: 12px; } }
 .sc { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 13px; }
 .sc.is-done { opacity: 0.75; }
-.sc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+/* name and length on the first line; the blocks the série covers underneath */
+.sc-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; }
 .sc-name { font-size: 13.5px; font-weight: 650; }
+.sc-blocks { flex: 0 0 100%; font-size: 11px; color: var(--muted); line-height: 1.35; }
 .sc-meta { font-size: 11.5px; color: var(--muted2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sc-bar { height: 3px; border-radius: 2px; background: var(--track); margin: 9px 0 8px; overflow: hidden; }
 .sc-bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }

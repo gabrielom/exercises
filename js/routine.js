@@ -13,6 +13,10 @@ function fmtLong(totalS) {
   return `${h}:${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 const seriesSeconds = s => s.slots.length * SLOT_SECONDS;
+// "Série 2 · Psoas & Hamstrings" → "Série 2". The blocks it covers are listed
+// under it on the card instead of being squeezed into the heading.
+const seriesTitle = s => s.name.split(' · ')[0];
+const seriesBlocks = s => s.blocks.join(', ');
 const fmtMins = s => `~${Math.round(seriesSeconds(s) / 60)} min`;
 
 let container = null;
@@ -225,14 +229,14 @@ function complete() {
     container.innerHTML = `
       <div class="routine-wrap r-hero">
         <h2>Done.</h2>
-        <p class="tagline">${done.name} complete — ${done.slots.length} holds · ${fmtLong(seriesSeconds(done))} of work.</p>
-        ${next ? `<button class="bigbtn" data-r="start" data-s="${next.id}">Continue · ${next.name}</button>` : ''}
+        <p class="tagline">${seriesTitle(done)} complete — ${done.slots.length} holds · ${fmtLong(seriesSeconds(done))} of work.</p>
+        ${next ? `<button class="bigbtn" data-r="start" data-s="${next.id}">Continue · ${seriesTitle(next)}</button>` : ''}
         <button class="bigbtn ${next ? 'ghost' : ''}" data-r="overview">Back to overview</button>
       </div>`;
   }
   active = null;
   st = null;
-  toast(`${done.name} complete`);
+  toast(`${seriesTitle(done)} complete`);
 }
 
 // ————— rendering —————
@@ -273,7 +277,8 @@ function renderOverview() {
     return `
       <div class="sc ${finished ? 'is-done' : ''}">
         <div class="sc-head">
-          <span class="sc-name">${s.name}</span>
+          <span class="sc-name">${seriesTitle(s)}</span>
+          <span class="sc-blocks">${seriesBlocks(s)}</span>
           <span class="sc-meta">${s.slots.length} holds · ${fmtMins(s)}</span>
         </div>
         <div class="sc-bar"><i style="width:${pct}%"></i></div>
@@ -338,7 +343,7 @@ function renderPlayer() {
       <div class="rp-main">
         <div class="rp-panel">
           <div class="rp-slotline">
-            <span>${active.name.replace('Série ', 'Série ')} · ${st.i + 1}/${active.slots.length}</span>
+            <span>${seriesTitle(active)} · ${st.i + 1}/${active.slots.length}</span>
             <span id="pRem">−${fmtLong(TOTAL - elapsedSeconds())}</span>
           </div>
           <div class="rp-fig"><img src="${imgFor(ex.id)}" alt=""></div>

@@ -448,6 +448,7 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .h-actions { display: flex; align-items: center; gap: 15px; }
 .h-actions .iconbtn, .h-actions .themebtn { width: auto; height: auto; padding: 2px; color: var(--muted); }
 .h-actions .iconbtn svg { width: 18px; height: 18px; }
+.h-lab.sub { font-size: 11px; color: var(--muted); margin-top: 14px; }
 .h-lab { font-size: 12.5px; font-weight: 650; color: var(--muted2); margin: 16px 0 6px; }
 
 /* three tiles */
@@ -460,7 +461,13 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .h-tile b { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .h-tile b.sage { color: var(--accent); }
 .h-tile span { font-size: 10.5px; color: var(--muted); line-height: 1.3; }
-.h-tile .t-chev { position: absolute; top: 9px; right: 9px; color: var(--muted); display: block; }
+/* the weight-changes tile is a toggle — tinted while its mode is on */
+.h-tile.link.on { background: var(--accent-soft); border-color: var(--accent-soft2); }
+.h-tile .t-chev {
+  position: absolute; top: 9px; right: 9px; color: var(--muted); display: block;
+  transition: transform .18s ease;
+}
+.h-tile .t-chev.open { transform: rotate(90deg); }
 .h-tile .t-chev svg { width: 12px; height: 12px; display: block; }
 
 .h-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
@@ -576,12 +583,6 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .swipe.open .swipe-body { transform: translateX(76px); }
 
 /* weight-changes screen */
-.h-card.sum { display: flex; justify-content: space-between; gap: 12px; padding: 12px 13px; margin-top: 12px; }
-.sum-l, .sum-r { display: flex; flex-direction: column; gap: 1px; }
-.sum-r { text-align: right; }
-.sum-l b { font-size: 24px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.1; }
-.sum-r b { font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.sum-l small, .sum-r small { font-size: 11px; color: var(--muted); }
 .w-row { display: flex; align-items: center; gap: 10px; padding: 10px 13px; }
 
 .empty { text-align: center; color: var(--muted2); padding: 48px 20px; font-size: 14px; }

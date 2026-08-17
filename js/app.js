@@ -887,11 +887,13 @@ function weightChanges(log, wlog = store.liveWeightLog()) {
 // Every week from the first day logged to this one, Monday-first, in rows of
 // seven bucketed into 4 heat levels. Five weeks minimum so a new log still
 // looks like a calendar; the grid scrolls when there is more.
-function heatWeeks(byDay) {
+function heatWeeks(byDay, span = byDay) {
   const today = new Date();
   const dow = (today.getDay() + 6) % 7;                      // 0 = Monday
   const end = new Date(today.getTime() + (6 - dow) * dayMs); // Sunday of this week
-  const keys = [...byDay.keys()].sort();
+  // `span` fixes how far back the grid reaches, so switching what the cells
+  // count does not resize the calendar under you.
+  const keys = [...span.keys()].sort();
   const first = keys.length ? dateOf(keys[0]) : new Date(today.getTime() - 34 * dayMs);
   const spanDays = Math.round((end - first) / dayMs) + 1;
   const weeks = Math.max(5, Math.ceil(spanDays / 7));
@@ -1016,7 +1018,9 @@ function renderHistory() {
   resetSwipe();
   const log = store.getLog();
   if (state.hView === 'gear') return renderGear();
-  if (state.hView === 'weights') return renderWeights(log);
+  // Weight changes are a mode of this screen, not a screen of their own: the
+  // tile toggles what the calendar counts and what the list below shows.
+  const showWeights = state.hView === 'weights';
 
   // Weight changes are history too — the screen is only empty when there is
   // neither a logged set nor a recorded weight change to show.
@@ -1031,13 +1035,20 @@ function renderHistory() {
   const weekAgo = store.localDate(Date.now() - 6 * dayMs);
   const sessions = days.filter(d => d >= weekAgo).length;
   const added = changes.reduce((a, c) => a + c.delta, 0);
-  const weeks = heatWeeks(byDay);
+
+  const changeDays = new Map();
+  for (const c of changes) {
+    if (!changeDays.has(c.d)) changeDays.set(c.d, []);
+    changeDays.get(c.d).push(c);
+  }
+  // Same span either way, so the grid does not jump when the mode changes.
+  const weeks = heatWeeks(showWeights ? changeDays : byDay, byDay.size ? byDay : changeDays);
 
   const tiles = `
     <div class="h-tiles">
-      <button class="h-tile link" data-act="weights">
+      <button class="h-tile link ${showWeights ? 'on' : ''}" data-act="weights" aria-pressed="${showWeights}">
         <b class="sage">${added >= 0 ? '+' : ''}${+added.toFixed(1)}</b><span>kg · weight changes</span>
-        <i class="t-chev">${ICON_CHEV}</i>
+        <i class="t-chev ${showWeights ? 'open' : ''}">${ICON_CHEV}</i>
       </button>
       <div class="h-tile"><b class="sage">${streak}</b><span>day streak</span></div>
       <div class="h-tile"><b>${sessions}</b><span>sessions this week</span></div>
@@ -1121,10 +1132,11 @@ function renderHistory() {
     </div>
     ${tiles}
     ${heat}
-    <div class="h-lab">Recent</div>
-    ${rows
-      ? `<div class="h-card list">${rows}</div>`
-      : `<div class="empty sm">No sets logged yet — tap <b>Done</b> on an exercise to start a session.</div>`}
+    ${showWeights
+      ? `<div class="h-lab">Weight changes</div>${weightRowsHTML(changes)}`
+      : `<div class="h-lab">Recent</div>${rows
+          ? `<div class="h-card list">${rows}</div>`
+          : `<div class="empty sm">No sets logged yet — tap <b>Done</b> on an exercise to start a session.</div>`}`}
   </div>`;
 
   fitChips();
@@ -1175,44 +1187,24 @@ function fitChips() {
   }
 }
 
-function renderWeights(log) {
-  const changes = weightChanges(log);
-  const up = changes.filter(c => c.delta > 0).length;
-  const down = changes.filter(c => c.delta < 0).length;
-  const added = changes.reduce((a, c) => a + c.delta, 0);
-  const exCount = new Set(changes.map(c => c.ex)).size;
-  const since = changes.length
-    ? dateOf(changes[changes.length - 1].d).toLocaleDateString(undefined, { month: 'long' })
-    : '';
+function weightRowsHTML(changes) {
+  if (!changes.length) return `<div class="empty sm">No weight changes recorded yet.</div>`;
   const byMonth = new Map();
   for (const c of changes) {
     const k = c.d.slice(0, 7);
     if (!byMonth.has(k)) byMonth.set(k, []);
     byMonth.get(k).push(c);
   }
-  const groups = [...byMonth.entries()].map(([k, list]) => {
+  return [...byMonth.entries()].map(([k, list]) => {
     const [y, m] = k.split('-').map(Number);
     const title = new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-    return `<div class="h-lab">${title}</div>
+    return `<div class="h-lab sub">${title}</div>
       <div class="h-card list">${list.map(c => swipeRow(`${c.edit ? 'wc' : 'ex'}:${c.d}:${c.ex}`, `
         <div class="w-row">
           <span class="x-main"><b>${byId[c.ex]?.name || c.ex}</b><small>${agoDay(c.d).replace(/^t/, 'T')} · ${groupOf(c.ex) || ''}</small></span>
           <span class="x-w"><b>${c.from} → ${c.to} kg</b><small>${deltaChip(c.delta)}</small></span>
         </div>`)).join('')}</div>`;
   }).join('');
-
-  view.innerHTML = `<div class="history-wrap">
-    <div class="h-head back">
-      <button class="iconbtn" data-act="h-back" aria-label="Back">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
-      </button>
-      <h2 class="h-title sm">Weight changes</h2>
-    </div>
-    ${changes.length ? `<div class="h-card sum">
-      <span class="sum-l"><b>${added >= 0 ? '+' : ''}${+added.toFixed(1)}</b><small>kg added${since ? ` since ${since}` : ''}</small></span>
-      <span class="sum-r"><b>${up} up · ${down} down</b><small>across ${exCount} exercise${exCount === 1 ? '' : 's'}</small></span>
-    </div>${groups}` : `<div class="empty">No weight changes logged yet.</div>`}
-  </div>`;
 }
 
 function renderGear() {
@@ -1499,7 +1491,8 @@ view.addEventListener('click', e => {
   const actBtn = e.target.closest('button[data-act]');
   if (!actBtn) return;
   const act = actBtn.dataset.act;
-  if (act === 'gear' || act === 'weights') { state.hView = act === 'gear' ? 'gear' : 'weights'; renderHistory(); scrollTo(0, 0); return; }
+  if (act === 'gear') { state.hView = 'gear'; renderHistory(); scrollTo(0, 0); return; }
+  if (act === 'weights') { state.hView = state.hView === 'weights' ? 'list' : 'weights'; renderHistory(); return; }
   if (act === 'update') { checkForUpdate(); return; }
   if (act === 'h-back') { state.hView = 'list'; renderHistory(); scrollTo(0, 0); return; }
   if (actBtn.dataset.act === 'export') doExport();
@@ -1682,7 +1675,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v72';
+const BUILD = 'v73';
 
 async function cachedVersion() {
 

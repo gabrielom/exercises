@@ -7,15 +7,28 @@ import { mountRoutine, leaveRoutine, routineControl } from './routine.js';
 
 store.init();
 
+// ————— the desktop shell —————
+// Running inside the Tauri window rather than a browser. Three things differ:
+// there is no server to check for updates, no download behaviour to hand a
+// blob to, and the traffic lights live in a real title bar rather than over the
+// page. Everything else is the same app.
+export const NATIVE = !!globalThis.__TAURI_INTERNALS__ || location.protocol === 'tauri:';
+
+function invoke(cmd, args) {
+  const fn = globalThis.__TAURI__?.core?.invoke || globalThis.__TAURI_INTERNALS__?.invoke;
+  return fn ? fn(cmd, args) : Promise.reject(new Error('desktop bridge unavailable'));
+}
+
 // When installed as a window that carries OS traffic-light controls (iPad,
 // macOS), flag the document so the filter tabs inset to the right of them.
-// iPhone installs are full-screen with no such controls, so exclude them.
+// iPhone installs are full-screen with no such controls, so exclude them — and
+// so is the desktop window, whose controls sit in its own title bar.
 (function markWindowed() {
   const installed = matchMedia('(display-mode: standalone)').matches
     || matchMedia('(display-mode: window-controls-overlay)').matches
     || navigator.standalone === true;
   const isPhone = /iPhone|iPod/.test(navigator.userAgent);
-  document.documentElement.classList.toggle('app-windowed', installed && !isPhone);
+  document.documentElement.classList.toggle('app-windowed', installed && !isPhone && !NATIVE);
 })();
 
 const view = document.getElementById('view');
@@ -1259,8 +1272,8 @@ function renderGear() {
     <h3 class="set-lab">About</h3>
     <div class="set-card">
       <div class="set-row static" id="verRow">
-        <span class="set-text"><b>Version <span class="tnum" id="appVer">…</span></b><small id="verSub">Checking…</small></span>
-        <button class="ghostpill" data-act="update">Check</button>
+        <span class="set-text"><b>Version <span class="tnum" id="appVer">…</span></b><small id="verSub">${NATIVE ? 'Desktop app · install a new build to update' : 'Checking…'}</small></span>
+        ${NATIVE ? '' : '<button class="ghostpill" data-act="update">Check</button>'}
       </div>
     </div>
     <div class="verline diag" id="layoutDiag" hidden>${layoutReport()}</div>
@@ -1271,6 +1284,7 @@ function renderGear() {
     const el = document.getElementById('appVer');
     if (!el) return;
     el.textContent = v.label;
+    if (NATIVE) return;                 // nothing to check against, and the row already says so
     const sub = document.getElementById('verSub');
     const at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     if (v.stale) {
@@ -1675,11 +1689,24 @@ view.addEventListener('change', e => {
   }).catch(err => toast(`Import failed: ${err.message}`));
 });
 
-function doExport() {
-  const blob = new Blob([store.exportData()], { type: 'application/json' });
+async function doExport() {
+  const json = store.exportData();
+  const name = `exercises-backup-${store.localDate()}.json`;
+  // A WKWebView has no download behaviour of its own, so the blob below would
+  // silently do nothing in the desktop app — the Rust side writes the file.
+  if (NATIVE) {
+    try {
+      const path = await invoke('save_backup', { name, contents: json });
+      toast(`Saved to ${String(path).split('/').slice(-2).join('/')}`);
+    } catch (err) {
+      toast(`Export failed: ${err.message || err}`);
+    }
+    return;
+  }
+  const blob = new Blob([json], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `exercises-backup-${store.localDate()}.json`;
+  a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
   toast('Backup downloaded');
@@ -1758,7 +1785,9 @@ if (sync.connected()) sync.schedule(1500); // pull other devices' sets shortly a
 // a long time: check on launch and on every return to the foreground, bypassing
 // the HTTP cache, and reload as soon as the new worker is in charge.
 
-if ('serviceWorker' in navigator) {
+// None of this applies to the desktop app: the assets are already on disk, a
+// worker cannot register on its custom scheme, and there is no deploy to pick up.
+if ('serviceWorker' in navigator && !NATIVE) {
   const hadController = !!navigator.serviceWorker.controller;
   let reloading = false, pendingReload = false;
 
@@ -1815,7 +1844,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v77';
+const BUILD = 'v78';
 
 async function cachedVersion() {
 

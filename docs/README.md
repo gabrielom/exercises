@@ -1,5 +1,9 @@
 # Reference archive
 
+[`MAC-APP.md`](MAC-APP.md) covers the desktop build — the Tauri shell in
+`src-tauri/` that wraps this same web app as a macOS application, how to build
+it, and the three things that necessarily work differently in a native window.
+
 [`DESIGN-BRIEF-04.md`](DESIGN-BRIEF-04.md) is the **current** document: every change made to
 the app since design handoff 03 landed, written so the design side can bring its boards back in
 line with the shipped code, plus the one problem still open (the routine player's up-next rail

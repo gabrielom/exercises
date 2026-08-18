@@ -1,0 +1,5 @@
+# Assembled by tools/bundle.mjs for the desktop build — never edited by hand.
+dist/
+node_modules/
+src-tauri/target/
+src-tauri/gen/

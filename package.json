@@ -1,0 +1,16 @@
+{
+  "name": "exercises",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop shell for the Exercises app. The web app itself needs no build step.",
+  "scripts": {
+    "bundle": "node tools/bundle.mjs",
+    "icons": "node tools/macicons.mjs",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

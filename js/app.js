@@ -1326,6 +1326,17 @@ function agoLabel(ts) {
   return new Date(ts).toLocaleDateString();
 }
 
+// Every device sharing the gist, most recently seen first — so this one leads,
+// having just synced. The names alone are the visible part; when each was last
+// seen is there on hover rather than crowding the row.
+function deviceListHTML() {
+  const list = sync.devices();
+  if (!list.length) return '';
+  const title = list.map(d => `${d.label} · ${agoLabel(d.seen)}${d.self ? ' · this device' : ''}`).join('\n');
+  return `<span class="sync-devices" title="${title.replace(/"/g, '&quot;')}">
+    ${list.map(d => d.label).join(' · ')}</span>`;
+}
+
 function syncCardHTML() {
   const c = sync.cfg();
   if (c) {
@@ -1333,6 +1344,7 @@ function syncCardHTML() {
       <div class="sync-stat">
         <i class="dot" aria-hidden="true"></i>
         <b>Synced ${agoLabel(c.lastSync)}</b>
+        ${deviceListHTML()}
       </div>
       <p class="sync-note">Secret gist <code>${c.gistId.slice(0, 7)}</code> — your history only,
         no servers, no account.</p>
@@ -1803,7 +1815,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v76';
+const BUILD = 'v77';
 
 async function cachedVersion() {
 

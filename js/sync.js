@@ -60,7 +60,29 @@ export async function connect(token) {
   return syncNow();
 }
 
-export function disconnect() { store.remove('sync'); }
+// Disconnect locally first, so a hanging network can never leave this device
+// still connected, then take it off the shared list as a courtesy. If that
+// fails the entry simply ages out after STALE_DAYS.
+export async function disconnect() {
+  const c = cfg();
+  const me = store.get('device')?.id;
+  store.remove('sync');
+  store.remove('devices');
+  if (!c?.token || !me) return;
+  try {
+    const gist = await gh(`/gists/${c.gistId}`, {}, c.token);
+    const file = gist.files?.[FILE];
+    if (!file) return;
+    const raw = file.truncated ? await fetch(file.raw_url).then(r => r.text()) : file.content;
+    const parsed = JSON.parse(raw);
+    if (parsed.app !== 'exercises' || !parsed.devices?.[me]) return;
+    delete parsed.devices[me];
+    await gh(`/gists/${c.gistId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ files: { [FILE]: { content: JSON.stringify(parsed) } } }),
+    }, c.token);
+  } catch { /* it ages out on its own */ }
+}
 
 function mergeLogs(a, b) {
   const seen = new Map();
@@ -91,13 +113,64 @@ function mergePrefs(local, remote) {
   return out;
 }
 
-function payload() {
+// ————— the shared device list —————
+// Every device that syncs writes one { id, name, seen } record. Union by id,
+// newest `seen` wins, and anything silent for STALE_DAYS drops off so a wiped
+// or forgotten device does not linger in the list for ever.
+
+const STALE_DAYS = 90;
+// How out of date this device's own `seen` may get before a sync refreshes it.
+// Without this every sync would dirty the payload and force a pointless push.
+const TOUCH_AFTER = 30 * 60000;
+
+function mergeDevices(local, remote) {
+  const out = {};
+  const cutoff = Date.now() - STALE_DAYS * 86400000;
+  for (const d of [...Object.values(remote || {}), ...Object.values(local || {})]) {
+    if (!d?.id) continue;
+    const cur = out[d.id];
+    if (!cur || (d.seen || 0) > (cur.seen || 0)) out[d.id] = d;
+  }
+  for (const [id, d] of Object.entries(out)) {
+    if ((d.seen || 0) < cutoff) delete out[id];
+  }
+  return out;
+}
+
+// This device's entry, refreshed only when it has gone stale enough to matter.
+function touchSelf(devices) {
+  const me = store.device();
+  const cur = devices[me.id];
+  if (cur && cur.name === me.name && Date.now() - (cur.seen || 0) < TOUCH_AFTER) return devices;
+  return { ...devices, [me.id]: { id: me.id, name: me.name, seen: Date.now() } };
+}
+
+// Everything that has synced, most recently seen first. Names repeat when two
+// devices are the same kind, so number the repeats rather than show "iPhone"
+// twice with no way to tell them apart.
+export function devices() {
+  const meId = store.get('device')?.id;
+  // This device always leads: its own `seen` is only refreshed every TOUCH_AFTER,
+  // so ordering it by that stamp would sometimes rank it below devices it had
+  // just synced alongside.
+  const all = Object.values(store.get('devices', {}))
+    .sort((a, b) => (b.id === meId) - (a.id === meId) || (b.seen || 0) - (a.seen || 0));
+  const seenNames = new Map();
+  return all.map(d => {
+    const n = (seenNames.get(d.name) || 0) + 1;
+    seenNames.set(d.name, n);
+    return { ...d, label: n > 1 ? `${d.name} ${n}` : d.name, self: d.id === meId };
+  });
+}
+
+function payload(devs) {
   return {
     app: 'exercises', v: 1,
     log: store.get('log', []),
     prefs: store.get('prefs', {}),
     deleted: store.get('deleted', []),
     wlog: store.get('wlog', []),
+    devices: devs || store.get('devices', {}),
   };
 }
 
@@ -129,20 +202,23 @@ export async function syncNow() {
 
     // Deletions are records here, so the merge already carries them.
     const wlog = mergeWeights(store.get('wlog', []), remote.wlog || []);
+    const devs = touchSelf(mergeDevices(store.get('devices', {}), remote.devices));
 
     store.set('log', log);
     store.set('prefs', prefs);
     store.set('deleted', deleted);
     store.set('wlog', wlog);
+    store.set('devices', devs);
 
     const changed = log.length !== (remote.log || []).length
       || deleted.length !== (remote.deleted || []).length
       || JSON.stringify(wlog) !== JSON.stringify(remote.wlog || [])
-      || JSON.stringify(prefs) !== JSON.stringify(remote.prefs || {});
+      || JSON.stringify(prefs) !== JSON.stringify(remote.prefs || {})
+      || JSON.stringify(devs) !== JSON.stringify(remote.devices || {});
     if (changed) {
       await gh(`/gists/${c.gistId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ files: { [FILE]: { content: JSON.stringify(payload()) } } }),
+        body: JSON.stringify({ files: { [FILE]: { content: JSON.stringify(payload(devs)) } } }),
       }, c.token);
     }
     saveCfg({ ...cfg(), lastSync: Date.now() });

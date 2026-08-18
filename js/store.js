@@ -176,6 +176,32 @@ export function setPref(exId, patch) {
   dispatchEvent(new CustomEvent('exercises:changed'));
 }
 
+// ————— this device —————
+// Who we are in the shared device list. Deliberately outside BACKUP_KEYS and
+// outside the gist merge for the *local* copy: importing a backup taken on
+// another phone must not make this one start claiming that phone's identity.
+
+function guessDeviceName() {
+  const ua = navigator.userAgent;
+  // An iPad on iPadOS 13+ reports itself as a Mac; the touch points give it away.
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'iPad';
+  if (/iPhone|iPod/.test(ua)) return 'iPhone';
+  if (/Android/.test(ua)) return /Mobile/.test(ua) ? 'Android phone' : 'Android tablet';
+  if (/Macintosh|Mac OS X/.test(ua)) return 'Mac';
+  if (/Windows/.test(ua)) return 'Windows PC';
+  if (/Linux|X11/.test(ua)) return 'Linux';
+  return 'This device';
+}
+
+export function device() {
+  let d = get('device');
+  if (!d?.id) {
+    d = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`, name: guessDeviceName() };
+    set('device', d);
+  }
+  return d;
+}
+
 // ————— backup —————
 
 const BACKUP_KEYS = ['v', 'prefs', 'log', 'routine', 'settings', 'deleted', 'wlog'];

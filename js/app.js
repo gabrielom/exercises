@@ -3,7 +3,7 @@ import { CATS, GYM_GROUPS, STRETCH_GROUPS, GROUP_FOCUS, EXERCISES, byId, imgFor 
 const SUBGROUPS = { gym: GYM_GROUPS, stretch: STRETCH_GROUPS };
 import * as store from './store.js';
 import * as sync from './sync.js';
-import { mountRoutine, leaveRoutine } from './routine.js';
+import { mountRoutine, leaveRoutine, routineControl } from './routine.js';
 
 store.init();
 
@@ -1010,7 +1010,7 @@ function swipeRow(target, inner) {
 
 function historyEmpty() {
   return `<div class="h-head"><h2 class="h-title">History</h2>
-      <div class="h-actions">${themeBtnHTML()}<button class="iconbtn" data-act="gear" aria-label="Data & sync">${ICON_GEAR}</button></div></div>
+      <div class="h-actions">${themeBtnHTML()}<button class="iconbtn" data-act="gear" aria-label="Settings">${ICON_GEAR}</button></div></div>
     <div class="empty">No sets logged yet.<br>Open any exercise and tap <b>Done</b>, or run the Corpo routine.</div>`;
 }
 
@@ -1128,7 +1128,7 @@ function renderHistory() {
 
   view.innerHTML = `<div class="history-wrap">
     <div class="h-head"><h2 class="h-title">History</h2>
-      <div class="h-actions">${themeBtnHTML()}<button class="iconbtn" data-act="gear" aria-label="Data & sync">${ICON_GEAR}</button></div>
+      <div class="h-actions">${themeBtnHTML()}<button class="iconbtn" data-act="gear" aria-label="Settings">${ICON_GEAR}</button></div>
     </div>
     ${tiles}
     ${heat}
@@ -1207,40 +1207,97 @@ function weightRowsHTML(changes) {
   }).join('');
 }
 
+const ICON_SET = {
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/>',
+  export: '<path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/>',
+  import: '<path d="M12 20V9m0 0l-4.5 4.5M12 9l4.5 4.5M5 4h14"/>',
+  trash: '<path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
+};
+const setIcon = (name, size) =>
+  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_SET[name]}</svg>`;
+
+// One row of the "Your data" card: icon tile, title, what it does, and an
+// optional figure on the right so Export can say how much it will export.
+function dataRow(act, icon, title, help, value = '', danger = false) {
+  return `<button class="set-row" data-act="${act}">
+    <span class="set-ico ${danger ? 'danger' : ''}">${setIcon(icon, 15)}</span>
+    <span class="set-text"><b class="${danger ? 'danger' : ''}">${title}</b><small>${help}</small></span>
+    ${value ? `<span class="set-val">${value}</span>` : ''}
+  </button>`;
+}
+
 function renderGear() {
-  view.innerHTML = `<div class="history-wrap">
+  const theme = (store.get('settings', {})).theme || 'auto';
+  const seg = ['auto', 'light', 'dark'].map(t =>
+    `<button class="${t === theme ? 'on' : ''}" data-act="theme-set" data-theme="${t}"
+       aria-pressed="${t === theme}">${t[0].toUpperCase()}${t.slice(1)}</button>`).join('');
+  const sets = store.getLog().length;
+
+  view.innerHTML = `<div class="settings-wrap">
     <div class="h-head back">
-      <button class="iconbtn" data-act="h-back" aria-label="Back">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
-      </button>
-      <h2 class="h-title sm">Data &amp; sync</h2>
+      <button class="iconbtn" data-act="h-back" aria-label="Back">${setIcon('back', 18)}</button>
+      <h2 class="set-title">Settings</h2>
     </div>
-    <div class="databar">
-      <button data-act="export">Export</button>
-      <button data-act="import">Import</button>
-      <button data-act="reset" class="danger">Reset data</button>
+
+    <h3 class="set-lab">Sync</h3>
+    ${syncCardHTML()}
+
+    <h3 class="set-lab">Your data</h3>
+    <div class="set-card">
+      ${dataRow('export', 'export', 'Export', 'JSON of every set, hold and weight change',
+                `${sets.toLocaleString()} set${sets === 1 ? '' : 's'}`)}
+      ${dataRow('import', 'import', 'Import', 'Merge a file from another device')}
+      ${dataRow('reset-weights', 'trash', 'Reset weight changes', 'Keeps sessions, clears the weight log', '', true)}
+      ${dataRow('reset', 'trash', 'Reset all data', 'Sessions, holds and weights — cannot be undone', '', true)}
     </div>
-    <div class="databar sub">
-      <button data-act="reset-weights" class="danger">Reset weight changes</button>
+
+    <h3 class="set-lab">Appearance</h3>
+    <div class="setseg" role="group" aria-label="Theme">${seg}</div>
+
+    <h3 class="set-lab">About</h3>
+    <div class="set-card">
+      <div class="set-row static" id="verRow">
+        <span class="set-text"><b>Version <span class="tnum" id="appVer">…</span></b><small id="verSub">Checking…</small></span>
+        <button class="ghostpill" data-act="update">Check</button>
+      </div>
     </div>
-    ${syncSectionHTML()}
-    <div class="verline">
-      <span>Version <b id="appVer">…</b></span>
-      <button data-act="update">Check for update</button>
-    </div>
-    <div class="verline diag" id="layoutDiag">${layoutReport()}</div>
+    <div class="verline diag" id="layoutDiag" hidden>${layoutReport()}</div>
     <input type="file" id="importFile" accept="application/json" hidden>
   </div>`;
+
   appVersion().then(v => {
     const el = document.getElementById('appVer');
     if (!el) return;
     el.textContent = v.label;
+    const sub = document.getElementById('verSub');
+    const at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     if (v.stale) {
       el.classList.add('stale');
-      const btn = document.querySelector('button[data-act="update"]');
-      if (btn) btn.textContent = `Load ${v.ready || 'update'}`;
+      if (sub) sub.textContent = `${v.ready || 'An update'} is ready · checked ${at}`;
+      const btn = view.querySelector('button[data-act="update"]');
+      if (btn) { btn.textContent = 'Update'; btn.classList.add('accent'); }
+    } else if (sub) {
+      sub.textContent = `Up to date · checked ${at}`;
     }
   });
+
+  // The layout report is debug output, not a setting — keep it reachable for
+  // chasing tab-bar placement on a real device, but out of the way.
+  longPress(view.querySelector('#verRow'), () => {
+    const d = view.querySelector('#layoutDiag');
+    if (d) d.hidden = !d.hidden;
+  });
+}
+
+// Fires after a held press without stealing the click that follows a tap.
+function longPress(el, fn, ms = 600) {
+  if (!el) return;
+  let timer = null;
+  const stop = () => { clearTimeout(timer); timer = null; };
+  el.addEventListener('pointerdown', () => { timer = setTimeout(fn, ms); });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, stop);
 }
 
 // Reloads when a newer build is sitting downloaded but not yet running, which
@@ -1269,22 +1326,35 @@ function agoLabel(ts) {
   return new Date(ts).toLocaleDateString();
 }
 
-function syncSectionHTML() {
+function syncCardHTML() {
   const c = sync.cfg();
-  const inner = c
-    ? `<div class="sync-status">Synced <b>${agoLabel(c.lastSync)}</b> · private gist <code>${c.gistId.slice(0, 7)}</code></div>
-       <div class="sync-actions">
-         <button data-act="sync-now">Sync now</button>
-         <button data-act="sync-off" class="danger">Disconnect</button>
-       </div>`
-    : `<p class="sync-help">Sync your history between devices through a private GitHub gist.
-         Create a <b>classic</b> personal access token with only the <b>gist</b> scope
-         (github.com → Settings → Developer settings → Tokens) and paste it once on each device.</p>
-       <div class="sync-form">
-         <input id="syncToken" type="password" placeholder="ghp_… token" autocomplete="off" spellcheck="false">
-         <button data-act="sync-connect">Connect</button>
-       </div>`;
-  return `<section class="day sync-section"><h3>Sync</h3><div class="sync-card">${inner}</div></section>`;
+  if (c) {
+    return `<div class="set-card sync">
+      <div class="sync-stat">
+        <i class="dot" aria-hidden="true"></i>
+        <b>Synced ${agoLabel(c.lastSync)}</b>
+      </div>
+      <p class="sync-note">Secret gist <code>${c.gistId.slice(0, 7)}</code> — your history only,
+        no servers, no account.</p>
+      <div class="sync-btns">
+        <button class="pill accent" data-act="sync-now">${setIcon('refresh', 13)} Sync now</button>
+        <button class="pill ghost" data-act="sync-off">Disconnect</button>
+      </div>
+    </div>`;
+  }
+  const step = (n, text) => `<li><i>${n}</i><span>${text}</span></li>`;
+  return `<div class="set-card sync">
+    <ol class="sync-steps">
+      ${step(1, 'Create a <b>classic</b> token on github.com with only the <b>gist</b> scope.')}
+      ${step(2, 'Paste it here — a <b>secret</b> gist is created to hold your history.')}
+      ${step(3, 'Repeat on your other devices with the <b>same token</b>.')}
+    </ol>
+    <div class="sync-form">
+      <input id="syncToken" type="password" placeholder="ghp_… token" autocomplete="off" spellcheck="false">
+      <button class="pill accent" data-act="sync-connect">Connect</button>
+    </div>
+    <p class="sync-fine">The token stays on this device and is only ever sent to api.github.com.</p>
+  </div>`;
 }
 
 // ————— history swipe-to-delete —————
@@ -1396,11 +1466,15 @@ function deleteTarget(target) {
 
 // ————— render root —————
 
+function markTab() {
+  document.querySelectorAll('.tabbar button[data-tab]').forEach(b =>
+    b.classList.toggle('on', b.dataset.tab === state.tab));
+}
+
 function render() {
   resetSwipe();
   if (state.tab !== 'routine') leaveRoutine();
-  document.querySelectorAll('.tabbar button').forEach(b =>
-    b.classList.toggle('on', b.dataset.tab === state.tab));
+  markTab();
   if (state.tab === 'exercises') renderExercises();
   else if (state.tab === 'history') renderHistory();
   else mountRoutine(view);
@@ -1445,6 +1519,8 @@ addEventListener('scroll', () => {
 }, { passive: true });
 
 document.querySelector('.tabbar').addEventListener('click', e => {
+  const ctl = e.target.closest('button[data-r]');
+  if (ctl) { routineControl(ctl.dataset.r); return; }
   const btn = e.target.closest('button[data-tab]');
   if (!btn) return;
   saveScroll();
@@ -1452,6 +1528,38 @@ document.querySelector('.tabbar').addEventListener('click', e => {
   state.tab = btn.dataset.tab;
   render();
   restoreScroll();
+});
+
+// ————— the tab bar doubles as the routine transport —————
+// A running série is a mode: the three tabs are swapped for back · play/pause ·
+// skip · End in the same pill, in place. That frees the 82px the in-content
+// control row used to cost, which is what pushed the up-next rail behind the bar.
+const TABS_HTML = tabBar.innerHTML;
+
+const RT_ICON = {
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  skip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',
+};
+
+function transportHTML(running) {
+  return `
+    <button class="rt-btn" data-r="back" aria-label="Previous">${RT_ICON.back}</button>
+    <button class="rt-btn primary" data-r="playpause" aria-label="${running ? 'Pause' : 'Resume'}">
+      ${running ? RT_ICON.pause : RT_ICON.play}
+    </button>
+    <button class="rt-btn" data-r="skip" aria-label="Skip">${RT_ICON.skip}</button>
+    <span class="rt-div" aria-hidden="true"></span>
+    <button class="rt-end" data-r="exit">End</button>`;
+}
+
+document.addEventListener('routine:player', e => {
+  const { open, running } = e.detail;
+  tabBar.classList.toggle('transport', open);
+  tabBar.setAttribute('aria-label', open ? 'Routine controls' : 'Sections');
+  tabBar.innerHTML = open ? transportHTML(running) : TABS_HTML;
+  if (!open) markTab();
 });
 
 view.addEventListener('click', e => {
@@ -1510,30 +1618,37 @@ view.addEventListener('click', e => {
   }
 });
 
+// Show progress in a button without losing the icon markup inside it; the
+// returned function puts the button back exactly as it was.
+function busy(btn, label) {
+  const html = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = label;
+  return () => { btn.disabled = false; btn.innerHTML = html; };
+}
+
 async function doSyncConnect(btn) {
   const input = view.querySelector('#syncToken');
-  btn.disabled = true;
-  btn.textContent = 'Connecting…';
+  const done = busy(btn, 'Connecting…');
   try {
     const r = await sync.connect(input.value);
     toast(`Sync connected${r?.pulled ? ` · ${r.pulled} ${r.pulled === 1 ? 'set' : 'sets'} pulled` : ''}`);
     renderHistory();
   } catch (err) {
     toast(`Sync failed: ${err.message}`);
-    btn.disabled = false;
-    btn.textContent = 'Connect';
+    done();
   }
 }
 
 async function doSyncNow(btn) {
-  btn.disabled = true;
-  btn.textContent = 'Syncing…';
+  const done = busy(btn, 'Syncing…');
   try {
     const r = await sync.syncNow();
     toast(r?.pulled ? `Synced · ${r.pulled} new ${r.pulled === 1 ? 'set' : 'sets'} pulled` : 'Synced ✓');
   } catch (err) {
     toast(`Sync failed: ${err.message}`);
   }
+  done();
   if (state.tab === 'history') renderHistory();
 }
 
@@ -1564,9 +1679,10 @@ function doExport() {
 // would mean deleting sessions.
 async function doResetWeights(btn) {
   if (!confirm('Clear every recorded weight change, on this device and in the gist?\n\nLogged sets are kept, so changes visible from your training history stay.')) return;
+  // The row carries an icon and two lines of text, so progress goes in the
+  // toast rather than into the button's own label.
   btn.disabled = true;
-  const label = btn.textContent;
-  btn.textContent = 'Clearing…';
+  toast('Clearing…');
   try {
     // Pull first, so records only the other device knows about get cleared too.
     if (sync.connected()) await sync.syncNow().catch(() => {});
@@ -1577,7 +1693,6 @@ async function doResetWeights(btn) {
     toast(`Cleared here, but the gist did not update: ${err.message}`);
   }
   btn.disabled = false;
-  btn.textContent = label;
   renderHistory();
 }
 
@@ -1596,14 +1711,27 @@ function applyTheme() {
   else document.documentElement.setAttribute('data-theme', theme);
 }
 
-// Theme toggle lives inside rendered views (tabs row / History head) — delegate.
-document.addEventListener('click', e => {
-  if (!e.target.closest('[data-act="theme"]')) return;
+function setTheme(theme) {
   const s = store.get('settings', {});
-  s.theme = { auto: 'light', light: 'dark', dark: 'auto' }[s.theme || 'auto'];
+  s.theme = theme;
   store.set('settings', s);
   applyTheme();
-  toast(`Theme: ${s.theme}`);
+}
+
+// Theme controls live inside rendered views (tabs row / History head, and the
+// Appearance segment in Settings) — delegate. Both write the same preference.
+document.addEventListener('click', e => {
+  const seg = e.target.closest('[data-act="theme-set"]');
+  if (seg) {
+    setTheme(seg.dataset.theme);
+    renderGear();
+    return;
+  }
+  if (!e.target.closest('[data-act="theme"]')) return;
+  const now = (store.get('settings', {})).theme || 'auto';
+  const next = { auto: 'light', light: 'dark', dark: 'auto' }[now];
+  setTheme(next);
+  toast(`Theme: ${next}`);
 });
 
 // ————— boot —————
@@ -1675,7 +1803,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v75';
+const BUILD = 'v76';
 
 async function cachedVersion() {
 

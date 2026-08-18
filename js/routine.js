@@ -137,6 +137,14 @@ function ensureInterval() {
   interval = setInterval(tick, 250);
 }
 
+// A running série is a mode: the tab bar turns into the transport for as long
+// as one is live. app.js owns the bar, so tell it whenever that changes.
+function signal() {
+  document.dispatchEvent(new CustomEvent('routine:player', {
+    detail: { open: !!st, running: !!st?.running },
+  }));
+}
+
 function beginPhase(seconds) {
   st.remaining = seconds;
   endAt = Date.now() + seconds * 1000;
@@ -145,6 +153,7 @@ function beginPhase(seconds) {
   grabWakeLock();
   persist();
   renderPlayer();
+  signal();
 }
 
 function tick() {
@@ -198,6 +207,7 @@ function pause() {
   dropWakeLock();
   persist();
   renderPlayer();
+  signal();
 }
 
 function resume() {
@@ -211,6 +221,7 @@ function exitToOverview() {
   active = null;
   st = null;
   renderOverview();
+  signal();
 }
 
 function complete() {
@@ -236,6 +247,7 @@ function complete() {
   }
   active = null;
   st = null;
+  signal();
   toast(`${seriesTitle(done)} complete`);
 }
 
@@ -363,22 +375,6 @@ function renderPlayer() {
               <span class="rp-phase ${isHold ? '' : 'rest'}" id="pPhase">${isHold ? 'Hold' : 'Rest'}</span>
             </div>
           </div>
-          <div class="rp-ctl">
-            <button class="rctl" data-r="back" aria-label="Previous">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
-            </button>
-            <button class="rctl primary" data-r="playpause" aria-label="${st.running ? 'Pause' : 'Resume'}">
-              ${st.running
-                ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>'
-                : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>'}
-            </button>
-            <button class="rctl" data-r="skip" aria-label="Skip">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
-            </button>
-            <button class="rctl" data-r="exit" aria-label="Exit">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-            </button>
-          </div>
         </div>
       </div>
       ${railHTML()}
@@ -400,27 +396,34 @@ function updateClock() {
 
 // ————— public API —————
 
+// Shared by the routine screen's own buttons and by the transport that
+// replaces the tab bar while a série runs — the transport lives outside this
+// container, so the actions have to be reachable from app.js.
+export function routineControl(r, seriesId) {
+  const series = seriesId ? SERIES.find(s => s.id === seriesId) : null;
+  if (r === 'start' && series) { delete progress[series.id]; startSeries(series); }
+  else if (r === 'resume' && series) {
+    const p = progress[series.id];
+    if (p) startSeries(series, p.i, p.phase, p.remaining);
+    else startSeries(series);
+  }
+  else if (r === 'overview') renderOverview();
+  else if (!st) return;                       // the rest need a live série
+  else if (r === 'playpause') { st.running ? pause() : resume(); }
+  else if (r === 'skip') goto(st.i + 1);
+  else if (r === 'back') goto(st.i - 1);
+  else if (r === 'exit') exitToOverview();
+}
+
 export function mountRoutine(el) {
   container = el;
   el.onclick = e => {
     const btn = e.target.closest('button[data-r]');
-    if (!btn) return;
-    const r = btn.dataset.r;
-    const series = btn.dataset.s ? SERIES.find(s => s.id === btn.dataset.s) : null;
-    if (r === 'start' && series) { delete progress[series.id]; startSeries(series); }
-    else if (r === 'resume' && series) {
-      const p = progress[series.id];
-      if (p) startSeries(series, p.i, p.phase, p.remaining);
-      else startSeries(series);
-    }
-    else if (r === 'overview') renderOverview();
-    else if (r === 'playpause') { st.running ? pause() : resume(); }
-    else if (r === 'skip') goto(st.i + 1);
-    else if (r === 'back') goto(st.i - 1);
-    else if (r === 'exit') exitToOverview();
+    if (btn) routineControl(btn.dataset.r, btn.dataset.s);
   };
   if (st?.running) renderPlayer();
   else renderOverview();
+  signal();
 }
 
 export function leaveRoutine() {

@@ -78,6 +78,37 @@ carry `data-tauri-drag-region`. Tauri drags from whichever element the press
 lands on, so the background of those rows moves the window while the tabs and
 the theme button still take clicks normally.
 
+**That attribute is not enough on its own.** The injected drag script invokes
+`plugin:window|start_dragging`, and `core:window:default` does *not* grant it —
+it grants `allow-internal-toggle-maximize` but not `allow-start-dragging`, so
+double-click-to-zoom works while dragging silently does nothing. The capability
+file names the permission explicitly.
+
+### Where the tabs sit
+
+Content is capped at 1180px and centred, so how much the traffic lights are in
+the way depends on the window:
+
+| Window | Controls | Category tabs | Group chips + grid |
+| --- | --- | --- | --- |
+| 1100px | in front of the column | pushed right to clear them | the page's own edge |
+| 1280px | in front of the column | pushed right to clear them | the page's own edge |
+| ≥1400px | in the margin beside the column | back at the page's edge | the page's own edge |
+
+`--win-controls` is recomputed from the window width on load and on resize, and
+falls to `0` as soon as the controls fit in the margin — from there the tabs,
+the group chips and the grid all share one left edge, which is the arrangement
+handoff v5 draws. Only the category row ever moves; the group chips keep the
+page's edge at every width so they stay lined up with the grid below them.
+
+Handoff v5 gets that alignment at *every* width by repositioning the window
+buttons themselves. Tauri 2.11 exposes `traffic_light_position` on the window
+*builder* only — there is no public runtime setter to follow a resize — so
+moving them would mean Objective-C against `NSWindow`, which cannot be compiled
+or checked anywhere but a Mac. Widening the default window to 1280 and letting
+the tabs shift below ~1400px is the same clamp the handoff itself specifies,
+without unverifiable native code.
+
 Everything else — the routine player, the timers, history, the gist sync — runs
 unchanged. Because the sync gist is shared, the Mac shows up in the device list
 in Settings as soon as it connects, using the same token as your other devices.

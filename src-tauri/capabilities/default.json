@@ -3,5 +3,8 @@
   "identifier": "default",
   "description": "Core window permissions. save_backup is an app command, not a plugin one, so it needs no grant here.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging"
+  ]
 }

@@ -113,6 +113,26 @@ Everything else — the routine player, the timers, history, the gist sync — r
 unchanged. Because the sync gist is shared, the Mac shows up in the device list
 in Settings as soon as it connects, using the same token as your other devices.
 
+## "I rebuilt and nothing changed"
+
+Check **Settings → About**. It shows the build the running app is made of, and
+that is the fastest way to tell a stale app from a stale layout.
+
+The web assets are embedded into the binary when the Rust crate compiles, and
+Tauri does not tell cargo to watch them: `tauri-build` emits `rerun-if-changed`
+for `tauri.conf.json`, `capabilities/` and resources, while `tauri-codegen` —
+which is what actually reads `dist/` — emits none at all. So a build after
+editing only HTML, CSS or JS used to find the crate "fresh", skip compiling and
+ship the assets baked into the *previous* binary. `build.rs` now walks `dist/`
+and watches every file, so any web change forces the rebuild.
+
+If a build still looks stale, in order:
+
+```sh
+open src-tauri/target/release/bundle/macos/Exercises.app   # not an older copy elsewhere
+touch src-tauri/src/lib.rs && npm run build                # force the crate to recompile
+```
+
 ## Files
 
 | Path | What it is |

@@ -36,6 +36,10 @@
   /* Left inset applied only in an installed window that has OS traffic-light
      controls (iPad / macOS) — see the .app-windowed class set from app.js. */
   --win-controls: 0px;
+  /* Vertical clearance under the desktop window's overlaid traffic lights, for
+     the screens that put their own header at the very top. The Exercises tabs
+     do not use it — they sit *beside* the controls instead. */
+  --titlebar: 0px;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -115,6 +119,13 @@ main { max-width: 1180px; margin: 0 auto; }
    traffic-light controls (var is 0 everywhere else, incl. iPhone). */
 .topbar .chips { padding-left: calc(var(--edge) + var(--win-controls)); }
 :root.app-windowed { --win-controls: 78px; }
+/* Desktop: the page runs under the window's own title bar, so the tabs take its
+   place. A little more headroom puts them on the traffic lights' centreline. */
+:root.app-native { --titlebar: 30px; }
+:root.app-native .topbar .chips { padding-top: 4px; }
+/* Stands in for the title bar you would otherwise drag the window by. Kept
+   under the tabs row (z-index 20), which carries the drag attribute itself. */
+.dragstrip { position: fixed; top: 0; left: 0; right: 0; height: var(--titlebar); z-index: 15; }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
   flex: 0 0 auto;
@@ -322,7 +333,7 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .p-done-screen p { color: var(--muted2); margin-top: 6px; }
 
 /* ————— routine ————— */
-.routine-wrap, .history-wrap { max-width: 560px; margin: 0 auto; padding: calc(var(--safe-top) + 4px) var(--edge) 32px; }
+.routine-wrap, .history-wrap { max-width: 560px; margin: 0 auto; padding: calc(var(--safe-top) + var(--titlebar) + 4px) var(--edge) 32px; }
 
 /* overview */
 .r-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 14px 0 0; }
@@ -590,7 +601,7 @@ img[src^="img/gen/"] { border-radius: 18px; }
 }
 
 /* ————— settings ————— */
-.settings-wrap { max-width: 560px; margin: 0 auto; padding: calc(var(--safe-top) + 4px) var(--edge) 32px; }
+.settings-wrap { max-width: 560px; margin: 0 auto; padding: calc(var(--safe-top) + var(--titlebar) + 4px) var(--edge) 32px; }
 .set-title { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; }
 .set-lab {
   font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;

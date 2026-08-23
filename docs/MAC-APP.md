@@ -60,6 +60,23 @@ window, and it adapts rather than failing quietly:
 | Assets | fetched, cached by the service worker | already on disk; no service worker at all |
 | Updates | a deploy reloads the app automatically | rebuild and reinstall — Settings says so |
 | Export | the browser downloads the blob | Rust writes it to `~/Downloads` and the toast names the file |
+| Title bar | — | none: the filter tabs sit beside the traffic lights |
+
+### The title bar
+
+The window uses `titleBarStyle: "Overlay"` with `hiddenTitle`, so the page runs
+the full height of the window and the traffic lights float over it — the same
+arrangement as the installed iPad app. **All · Gym · Stretching · Calisthenics**
+take the strip the title bar would have occupied, inset 78px so they start clear
+of the controls and centred on them. Screens with their own header (History,
+Routine, Settings) have no tabs row to inset, so they take 30px of vertical
+clearance instead and start below the controls.
+
+Losing the title bar also loses the thing you drag the window by, so the app
+puts it back: a transparent 30px strip across the top, plus the tabs row itself,
+carry `data-tauri-drag-region`. Tauri drags from whichever element the press
+lands on, so the background of those rows moves the window while the tabs and
+the theme button still take clicks normally.
 
 Everything else — the routine player, the timers, history, the gist sync — runs
 unchanged. Because the sync gist is shared, the Mac shows up in the device list

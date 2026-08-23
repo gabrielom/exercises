@@ -21,15 +21,31 @@ function invoke(cmd, args) {
 
 // When installed as a window that carries OS traffic-light controls (iPad,
 // macOS), flag the document so the filter tabs inset to the right of them.
-// iPhone installs are full-screen with no such controls, so exclude them — and
-// so is the desktop window, whose controls sit in its own title bar.
+// iPhone installs are full-screen with no such controls, so exclude them.
 (function markWindowed() {
   const installed = matchMedia('(display-mode: standalone)').matches
     || matchMedia('(display-mode: window-controls-overlay)').matches
     || navigator.standalone === true;
   const isPhone = /iPhone|iPod/.test(navigator.userAgent);
-  document.documentElement.classList.toggle('app-windowed', installed && !isPhone && !NATIVE);
+  document.documentElement.classList.toggle('app-windowed', NATIVE || (installed && !isPhone));
 })();
+
+// The desktop window has no title bar of its own — the page runs under the
+// traffic lights. That buys the tabs row the title bar's space, but it also
+// takes away the thing you drag the window by, so put a strip back across the
+// top. It sits *below* the Exercises tabs (z-index 20), which carry the drag
+// attribute themselves so their empty space drags and the tabs still click.
+if (NATIVE) {
+  document.documentElement.classList.add('app-native');
+  const strip = document.createElement('div');
+  strip.className = 'dragstrip';
+  strip.setAttribute('data-tauri-drag-region', '');
+  document.body.append(strip);   // module scripts run after the body is parsed
+}
+
+// Tauri drags from whichever element the press actually lands on, so marking a
+// container makes its own background draggable while its buttons stay clickable.
+const DRAG = NATIVE ? ' data-tauri-drag-region' : '';
 
 const view = document.getElementById('view');
 const toastEl = document.getElementById('toast');
@@ -230,7 +246,7 @@ function renderExercises() {
     const chips = [['all', 'All'], ...Object.entries(CATS)]
       .map(([id, label]) => `<button class="chip ${state.cat === id ? 'on' : ''}" data-cat="${id}">${label}</button>`).join('');
     const subchips = SUBGROUPS[state.cat] ? `<div class="chips sub">${subchipsInner()}</div>` : '';
-    view.innerHTML = `<div class="topbar"><div class="chips">${chips}${themeBtnHTML()}</div>${subchips}</div><div class="grid">${gridCells()}</div>`;
+    view.innerHTML = `<div class="topbar"${DRAG}><div class="chips"${DRAG}>${chips}${themeBtnHTML()}</div>${subchips}</div><div class="grid">${gridCells()}</div>`;
   }
 
   // restore the remembered scroll positions for the new bars
@@ -1844,7 +1860,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v78';
+const BUILD = 'v79';
 
 async function cachedVersion() {
 

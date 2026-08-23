@@ -127,8 +127,14 @@ main { max-width: 1180px; margin: 0 auto; }
    that edge, which is what puts the controls *on* the line the page reads down
    rather than off beside it. */
 :root.app-native { --titlebar: 30px; --win-controls: 70px; }
-:root.app-native .topbar .chips.sub { padding-left: var(--edge); }
-:root.app-native .topbar .chips { padding-top: 4px; }
+/* The two header rows meet: the tabs row carries no bottom padding and the
+   group row no top padding, so the only thing between them is each chip's own
+   4px and its underline. Written as shorthands because a lone padding-top here
+   outranks `.chips.sub`'s own and would put the gap back. */
+:root.app-native .topbar .chips {
+  padding: 4px var(--edge) 0 calc(var(--edge) + var(--win-controls));
+}
+:root.app-native .topbar .chips.sub { padding: 0 var(--edge) 10px; }
 /* Stands in for the title bar you would otherwise drag the window by. Kept
    under the tabs row (z-index 20), which carries the drag attribute itself. */
 .dragstrip { position: fixed; top: 0; left: 0; right: 0; height: var(--titlebar); z-index: 15; }

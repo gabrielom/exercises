@@ -84,31 +84,45 @@ it grants `allow-internal-toggle-maximize` but not `allow-start-dragging`, so
 double-click-to-zoom works while dragging silently does nothing. The capability
 file names the permission explicitly.
 
-### Where the content sits
+### Where the controls sit
 
-Nothing is indented *within* the page. The whole content column moves right by
-`--column-shift`, so the tabs, the group chips and the grid keep the single left
-edge the eye reads down, and that edge clears the traffic lights:
+The window controls are moved onto the content column's left edge, so the page
+reads down one line: controls, group chips, section headings and cards all start
+there, and only the category tabs begin after them.
 
-| Window | Shift | Shared left edge | Controls |
+| Window | Column edge | Controls | Tabs |
 | --- | --- | --- | --- |
-| 1100px | 106px | 138px | in the space to its left |
-| 1280px | 56px | 138px | in the space to its left |
-| 1440px | 0 | 162px | in the margin beside the column |
-| 1600px | 0 | 242px | in the margin beside the column |
+| 1100px | 32px | 32px | 102px |
+| 1280px | 82px | 82px | 152px |
+| 1440px | 162px | 162px | 232px |
+| 1600px | 242px | 242px | 312px |
 
-Content is capped at 1180px and centred, so past roughly 1400px the margin is
-already wide enough to hold the controls, the shift falls to zero and the column
-is centred exactly as it is in a browser. app.js recomputes it on load and on
-resize.
+The page owns the layout, so it measures that edge and hands it to the
+`place_window_controls` command; `src/mac.rs` shifts the three buttons
+horizontally to match. It runs on load and on every resize, because macOS
+re-lays the buttons out in the corner on its own. Only the horizontal position
+is touched — the vertical one already lines up with the tabs row — and the shift
+is relative to where the buttons currently are, so repeated calls converge
+instead of drifting. `--win-controls` reserves the width they occupy at the
+start of the tabs row; every other row begins at the edge itself.
 
-Handoff v5 puts the controls *on* the column's left edge rather than just clear
-of it, by repositioning the window buttons themselves. Tauri 2.11 exposes
-`traffic_light_position` on the window *builder* only — there is no public
-runtime setter to follow a resize — so that would mean Objective-C against
-`NSWindow`, which cannot be compiled or checked anywhere but a Mac. Moving the
-column instead gets the part that matters, one shared edge at every width, with
-no unverifiable native code.
+Tauri 2.11 exposes `traffic_light_position` on the window *builder* only, with no
+public runtime setter, which is why this talks to AppKit through `objc2` rather
+than through Tauri.
+
+**Verifying the native code from a non-Mac.** `cargo check` on Linux compiles
+the crate with `mac.rs` cfg'd out, so it proves nothing about that file. Adding
+the macOS target does:
+
+```sh
+rustup target add aarch64-apple-darwin
+cargo check --target aarch64-apple-darwin      # in a crate with just objc2
+```
+
+The full app cannot be checked that way — Tauri's macOS dependencies build
+Objective-C, which needs Apple's toolchain — but a scratch crate containing only
+`mac.rs` and `objc2` type-checks against the real target, which covers the
+message sends and their argument and return types.
 
 Everything else — the routine player, the timers, history, the gist sync — runs
 unchanged. Because the sync gist is shared, the Mac shows up in the device list

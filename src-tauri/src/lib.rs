@@ -1,5 +1,34 @@
 use tauri::Manager;
 
+#[cfg(target_os = "macos")]
+mod mac;
+
+/// Put the window controls on the left edge of the content column, at `x` in
+/// window coordinates. The page works out where that edge is — it owns the
+/// layout — and calls this on load and on every resize.
+///
+/// AppKit must be touched from the main thread, and Tauri runs commands on a
+/// worker, so the work is handed back across.
+#[tauri::command]
+fn place_window_controls(window: tauri::Window, x: f64) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let target = window.clone();
+        window
+            .run_on_main_thread(move || {
+                if let Ok(ns_window) = target.ns_window() {
+                    unsafe { mac::place_controls(ns_window, x) };
+                }
+            })
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (&window, x);
+    }
+    Ok(())
+}
+
 /// Write a backup file to the user's Downloads folder and report where it went.
 ///
 /// The web build hands the browser a blob and lets it download; a WKWebView has
@@ -24,7 +53,7 @@ fn save_backup(app: tauri::AppHandle, name: String, contents: String) -> Result<
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![save_backup])
+        .invoke_handler(tauri::generate_handler![save_backup, place_window_controls])
         .run(tauri::generate_context!())
         .expect("error while running the Exercises app");
 }

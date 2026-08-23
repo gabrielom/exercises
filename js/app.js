@@ -42,24 +42,22 @@ if (NATIVE) {
   strip.setAttribute('data-tauri-drag-region', '');
   document.body.append(strip);   // module scripts run after the body is parsed
 
-  // The traffic lights are drawn by the system in the window's top-left corner,
-  // so the page has to start clear of them. Move the whole content column rather
-  // than indenting one row inside it: the tabs, the group chips and the grid
-  // then keep the single left edge they read down, which is the point.
-  //
-  // How far depends on the window. Content is capped at 1180px and centred, so a
-  // wide enough window already leaves the controls in the margin beside the
-  // column and the shift falls to zero — from there the column is centred, exactly
-  // as it is in a browser.
-  const CONTROLS_RIGHT = 72;   // where the three buttons end, from the window edge
-  const CLEARANCE = 34;
-  const fitColumn = () => {
-    const columnLeft = Math.max(0, (innerWidth - 1180) / 2);
-    const shift = Math.max(0, CONTROLS_RIGHT + CLEARANCE - columnLeft);
-    document.documentElement.style.setProperty('--column-shift', `${Math.round(shift)}px`);
+  // Put the window controls on the content column's left edge, rather than
+  // leaving them stranded in the window corner with a gap before the page.
+  // The page owns the layout, so it works out where that edge is and tells the
+  // native side; macOS puts them back in the corner on its own whenever the
+  // window resizes, so this runs again then. The tabs row reserves the width
+  // they occupy through --win-controls, and every other row starts at the edge
+  // itself, which is what puts the controls *on* the line the page reads down.
+  const placeControls = () => {
+    const main = document.querySelector('main');
+    if (!main) return;
+    const edge = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge')) || 18;
+    const x = Math.round(main.getBoundingClientRect().left + edge);
+    invoke('place_window_controls', { x }).catch(() => { /* older build, or not macOS */ });
   };
-  fitColumn();
-  addEventListener('resize', fitColumn);
+  placeControls();
+  addEventListener('resize', placeControls);
 }
 
 // Tauri drags from whichever element the press actually lands on, so marking a
@@ -1879,7 +1877,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v82';
+const BUILD = 'v83';
 
 async function cachedVersion() {
 

@@ -10,21 +10,21 @@ mod mac;
 /// AppKit must be touched from the main thread, and Tauri runs commands on a
 /// worker, so the work is handed back across.
 #[tauri::command]
-fn place_window_controls(window: tauri::Window, x: f64) -> Result<(), String> {
+fn place_window_controls(window: tauri::Window, x: f64, y: f64) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         let target = window.clone();
         window
             .run_on_main_thread(move || {
                 if let Ok(ns_window) = target.ns_window() {
-                    unsafe { mac::place_controls(ns_window, x) };
+                    unsafe { mac::place_controls(ns_window, x, y) };
                 }
             })
             .map_err(|e| e.to_string())?;
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (&window, x);
+        let _ = (&window, x, y);
     }
     Ok(())
 }

@@ -42,27 +42,39 @@ if (NATIVE) {
   strip.setAttribute('data-tauri-drag-region', '');
   document.body.append(strip);   // module scripts run after the body is parsed
 
-  // Put the window controls on the content column's left edge, rather than
-  // leaving them stranded in the window corner with a gap before the page.
-  // The page owns the layout, so it works out where that edge is and tells the
-  // native side; macOS puts them back in the corner on its own whenever the
-  // window resizes, so this runs again then. The tabs row reserves the width
-  // they occupy through --win-controls, and every other row starts at the edge
-  // itself, which is what puts the controls *on* the line the page reads down.
-  const placeControls = () => {
-    const main = document.querySelector('main');
-    if (!main) return;
-    const edge = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge')) || 18;
-    const x = Math.round(main.getBoundingClientRect().left + edge);
-    invoke('place_window_controls', { x }).catch(() => { /* older build, or not macOS */ });
-  };
-  placeControls();
+  // Not placeControls() yet — its state is declared below, and render() calls
+  // it once the page it has to measure exists.
   addEventListener('resize', placeControls);
 }
 
 // Tauri drags from whichever element the press actually lands on, so marking a
 // container makes its own background draggable while its buttons stay clickable.
 const DRAG = NATIVE ? ' data-tauri-drag-region' : '';
+
+// Put the window controls on the content column's left edge, centred on the
+// tabs' text, rather than leaving them in the window corner. The page owns the
+// layout, so it measures both and tells the native side; macOS puts them back
+// by itself on a resize, so this runs again then and after every render.
+//
+// The vertical centre is measured off a real tab rather than derived from the
+// padding: the row centres its items, and the theme button is the tallest of
+// them, so the text does not sit where the row's own padding would put it. Only
+// the Exercises screen has tabs, so the last good measurement carries over to
+// the screens that do not — the controls keep one position throughout.
+let controlsY = 20;
+function placeControls() {
+  if (!NATIVE) return;
+  const main = document.querySelector('main');
+  if (!main) return;
+  const edge = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge')) || 18;
+  const x = Math.round(main.getBoundingClientRect().left + edge);
+  const tab = document.querySelector('.topbar .chips:not(.sub) .chip');
+  if (tab) {
+    const r = tab.getBoundingClientRect();
+    controlsY = Math.round(r.top + r.height / 2);
+  }
+  invoke('place_window_controls', { x, y: controlsY }).catch(() => { /* older build, or not macOS */ });
+}
 
 const view = document.getElementById('view');
 const toastEl = document.getElementById('toast');
@@ -1537,6 +1549,7 @@ function render() {
   if (state.tab === 'exercises') renderExercises();
   else if (state.tab === 'history') renderHistory();
   else mountRoutine(view);
+  placeControls();   // the tabs row only exists on one screen — re-measure while it is there
 }
 
 // ————— events —————
@@ -1877,7 +1890,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v84';
+const BUILD = 'v85';
 
 async function cachedVersion() {
 

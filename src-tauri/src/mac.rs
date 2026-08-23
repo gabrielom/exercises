@@ -46,14 +46,23 @@ unsafe impl Encode for CGRect {
 /// NSWindowButton: close, miniaturize, zoom.
 const BUTTONS: [usize; 3] = [0, 1, 2];
 
-/// Slide the three controls sideways so the leftmost one starts at `x`, in the
-/// window's own coordinates. Their spacing and vertical position are read from
-/// AppKit rather than assumed, and the shift is relative, so calling this again
-/// after a resize simply re-converges instead of drifting.
+/// How far the controls may be moved from wherever AppKit put them. The page
+/// asks for a few tens of points at most; anything larger means a coordinate
+/// assumption below is wrong, and doing nothing beats flinging them off-window.
+const MAX_TRAVEL: f64 = 60.0;
+
+/// Put the three controls so the leftmost one starts at `x` and their centres
+/// sit `y` points below the top of the window — both in the page's own
+/// coordinates, since the webview fills the window.
+///
+/// Spacing is read from AppKit rather than assumed, and both shifts are applied
+/// to every button equally, so the row keeps whatever arrangement the system
+/// gave it. The shifts are computed against the buttons' current frames, so
+/// calling this again after a resize re-converges instead of drifting.
 ///
 /// # Safety
 /// `ns_window` must be a live `NSWindow`, and this must run on the main thread.
-pub unsafe fn place_controls(ns_window: *mut std::ffi::c_void, x: f64) {
+pub unsafe fn place_controls(ns_window: *mut std::ffi::c_void, x: f64, y: f64) {
     let window = ns_window as *mut AnyObject;
     if window.is_null() {
         return;
@@ -62,9 +71,22 @@ pub unsafe fn place_controls(ns_window: *mut std::ffi::c_void, x: f64) {
     if close.is_null() {
         return;
     }
+    let titlebar: *mut AnyObject = unsafe { msg_send![close, superview] };
+    if titlebar.is_null() {
+        return;
+    }
+    // The titlebar view is unflipped — y grows upward from its bottom edge — and
+    // its top edge is the top of the window, so a distance measured downward
+    // from the window top becomes `height - distance` measured up from the
+    // bottom. Its bounds, not its frame: child frames live in bounds space.
+    let bounds: CGRect = unsafe { msg_send![titlebar, bounds] };
     let frame: CGRect = unsafe { msg_send![close, frame] };
     let dx = x - frame.origin.x;
-    if dx.abs() < 0.5 {
+    let dy = (bounds.size.height - y - frame.size.height / 2.0) - frame.origin.y;
+    if dx.abs() < 0.5 && dy.abs() < 0.5 {
+        return;
+    }
+    if dx.abs() > MAX_TRAVEL + bounds.size.width || dy.abs() > MAX_TRAVEL {
         return;
     }
     for index in BUTTONS {
@@ -75,7 +97,7 @@ pub unsafe fn place_controls(ns_window: *mut std::ffi::c_void, x: f64) {
         let f: CGRect = unsafe { msg_send![button, frame] };
         let origin = CGPoint {
             x: f.origin.x + dx,
-            y: f.origin.y,
+            y: f.origin.y + dy,
         };
         let _: () = unsafe { msg_send![button, setFrameOrigin: origin] };
     }

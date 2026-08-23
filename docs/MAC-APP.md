@@ -84,30 +84,31 @@ it grants `allow-internal-toggle-maximize` but not `allow-start-dragging`, so
 double-click-to-zoom works while dragging silently does nothing. The capability
 file names the permission explicitly.
 
-### Where the tabs sit
+### Where the content sits
 
-Content is capped at 1180px and centred, so how much the traffic lights are in
-the way depends on the window:
+Nothing is indented *within* the page. The whole content column moves right by
+`--column-shift`, so the tabs, the group chips and the grid keep the single left
+edge the eye reads down, and that edge clears the traffic lights:
 
-| Window | Controls | Category tabs | Group chips + grid |
+| Window | Shift | Shared left edge | Controls |
 | --- | --- | --- | --- |
-| 1100px | in front of the column | pushed right to clear them | the page's own edge |
-| 1280px | in front of the column | pushed right to clear them | the page's own edge |
-| ≥1400px | in the margin beside the column | back at the page's edge | the page's own edge |
+| 1100px | 106px | 138px | in the space to its left |
+| 1280px | 56px | 138px | in the space to its left |
+| 1440px | 0 | 162px | in the margin beside the column |
+| 1600px | 0 | 242px | in the margin beside the column |
 
-`--win-controls` is recomputed from the window width on load and on resize, and
-falls to `0` as soon as the controls fit in the margin — from there the tabs,
-the group chips and the grid all share one left edge, which is the arrangement
-handoff v5 draws. Only the category row ever moves; the group chips keep the
-page's edge at every width so they stay lined up with the grid below them.
+Content is capped at 1180px and centred, so past roughly 1400px the margin is
+already wide enough to hold the controls, the shift falls to zero and the column
+is centred exactly as it is in a browser. app.js recomputes it on load and on
+resize.
 
-Handoff v5 gets that alignment at *every* width by repositioning the window
-buttons themselves. Tauri 2.11 exposes `traffic_light_position` on the window
-*builder* only — there is no public runtime setter to follow a resize — so
-moving them would mean Objective-C against `NSWindow`, which cannot be compiled
-or checked anywhere but a Mac. Widening the default window to 1280 and letting
-the tabs shift below ~1400px is the same clamp the handoff itself specifies,
-without unverifiable native code.
+Handoff v5 puts the controls *on* the column's left edge rather than just clear
+of it, by repositioning the window buttons themselves. Tauri 2.11 exposes
+`traffic_light_position` on the window *builder* only — there is no public
+runtime setter to follow a resize — so that would mean Objective-C against
+`NSWindow`, which cannot be compiled or checked anywhere but a Mac. Moving the
+column instead gets the part that matters, one shared edge at every width, with
+no unverifiable native code.
 
 Everything else — the routine player, the timers, history, the gist sync — runs
 unchanged. Because the sync gist is shared, the Mac shows up in the device list

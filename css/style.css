@@ -121,13 +121,13 @@ main { max-width: 1180px; margin: 0 auto; }
 :root.app-windowed { --win-controls: 78px; }
 /* Desktop: the page runs under the window's own title bar, so the tabs take its
    place. A little more headroom puts them on the traffic lights' centreline.
-   Only the category row moves: the group chips keep the page's own left edge so
-   they stay lined up with the grid, which is the column everything reads down.
-   --win-controls is recomputed from the window width in app.js, and falls to 0
-   once the window is wide enough for the controls to sit in the margin beside
-   the content column rather than in front of it. */
-:root.app-native { --titlebar: 30px; }
-:root.app-native .topbar .chips.sub { padding-left: var(--edge); }
+   Nothing is indented *within* the page — the whole content column moves right
+   instead, by --column-shift, so the tabs, the group chips and the grid keep one
+   shared left edge and it clears the traffic lights. app.js recomputes the shift
+   from the window width; it falls to 0 as soon as the column is centred far
+   enough right for the controls to sit in the margin beside it. */
+:root.app-native { --titlebar: 30px; --win-controls: 0px; }
+:root.app-native main { padding-left: var(--column-shift, 0px); }
 :root.app-native .topbar .chips { padding-top: 4px; }
 /* Stands in for the title bar you would otherwise drag the window by. Kept
    under the tabs row (z-index 20), which carries the drag attribute itself. */

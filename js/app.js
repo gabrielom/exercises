@@ -43,20 +43,23 @@ if (NATIVE) {
   document.body.append(strip);   // module scripts run after the body is parsed
 
   // The traffic lights are drawn by the system in the window's top-left corner,
-  // so the category tabs have to start clear of them. How far depends on the
-  // window: content is capped at 1180px and centred, so a wide enough window
-  // leaves the controls sitting in the margin *beside* the column, and the tabs
-  // can go back to the page's own edge — lining up with the group chips and the
-  // grid. Narrower, and they shift right by however much is still in the way.
-  const CONTROLS_RIGHT = 92;   // where the three buttons end, from the window edge
-  const CLEARANCE = 14;
-  const fitControls = () => {
+  // so the page has to start clear of them. Move the whole content column rather
+  // than indenting one row inside it: the tabs, the group chips and the grid
+  // then keep the single left edge they read down, which is the point.
+  //
+  // How far depends on the window. Content is capped at 1180px and centred, so a
+  // wide enough window already leaves the controls in the margin beside the
+  // column and the shift falls to zero — from there the column is centred, exactly
+  // as it is in a browser.
+  const CONTROLS_RIGHT = 72;   // where the three buttons end, from the window edge
+  const CLEARANCE = 34;
+  const fitColumn = () => {
     const columnLeft = Math.max(0, (innerWidth - 1180) / 2);
-    const push = Math.max(0, CONTROLS_RIGHT + CLEARANCE - columnLeft);
-    document.documentElement.style.setProperty('--win-controls', `${Math.round(push)}px`);
+    const shift = Math.max(0, CONTROLS_RIGHT + CLEARANCE - columnLeft);
+    document.documentElement.style.setProperty('--column-shift', `${Math.round(shift)}px`);
   };
-  fitControls();
-  addEventListener('resize', fitControls);
+  fitColumn();
+  addEventListener('resize', fitColumn);
 }
 
 // Tauri drags from whichever element the press actually lands on, so marking a
@@ -1876,7 +1879,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v81';
+const BUILD = 'v82';
 
 async function cachedVersion() {
 

@@ -1922,7 +1922,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v89';
+const BUILD = 'v90';
 
 async function cachedVersion() {
 

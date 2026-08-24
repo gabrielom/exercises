@@ -707,7 +707,9 @@ img[src^="img/gen/"] { border-radius: 18px; }
 }
 .sync-note { font-size: 11.5px; color: var(--muted2); line-height: 1.5; }
 .sync-note code { font-family: inherit; color: var(--accent-dark); background: var(--accent-soft); border-radius: 5px; padding: 1px 6px; }
-.sync-btns { display: flex; gap: 8px; margin-top: 2px; }
+/* Three pills do not fit a phone on one line — let them wrap rather than shrink
+   the labels or push Disconnect off the card. */
+.sync-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .sync-steps { list-style: none; display: grid; gap: 7px; }
 .sync-steps li { display: flex; align-items: baseline; gap: 9px; }
 .sync-steps i {

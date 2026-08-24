@@ -39,11 +39,50 @@ async function gh(path, opts, token) {
   return res.json();
 }
 
+// ————— setup codes —————
+// A connected device can hand the next one everything it needs in a single
+// string, so you never have to go back to GitHub for the token — which you
+// cannot do anyway, since a classic token is only ever shown once.
+//
+// It carries the token, so it is as sensitive as the token. Nothing generates
+// or stores it: it is built on demand from what this device already has.
+
+const PAIR = 'exsync1:';
+
+export function setupCode() {
+  const c = cfg();
+  if (!c?.token || !c.gistId) return null;
+  return PAIR + btoa(JSON.stringify({ t: c.token, g: c.gistId }));
+}
+
+function readSetupCode(text) {
+  if (!text.startsWith(PAIR)) return null;
+  try {
+    const { t, g } = JSON.parse(atob(text.slice(PAIR.length)));
+    return t && g ? { token: t, gistId: g } : null;
+  } catch {
+    throw new Error('that setup code is damaged — copy it again');
+  }
+}
+
 // Connect this device: reuse the account's existing sync gist, else create it
 // seeded with this device's data. Then run a first sync.
-export async function connect(token) {
-  token = token.trim();
-  if (!token) throw new Error('paste a token first');
+export async function connect(input) {
+  const token = (input || '').trim();
+  if (!token) throw new Error('paste a token or setup code first');
+
+  // A setup code already names the gist, so there is nothing to search for.
+  const paired = readSetupCode(token);
+  if (paired) {
+    saveCfg({ ...paired, lastSync: 0, auto: true });
+    try {
+      return await syncNow();
+    } catch (err) {
+      store.remove('sync');   // never leave a device half-connected
+      throw err;
+    }
+  }
+
   const gists = await gh('/gists?per_page=100', {}, token);
   let gist = gists.find(g => g.files && g.files[FILE]);
   if (!gist) {

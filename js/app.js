@@ -1303,6 +1303,7 @@ const ICON_SET = {
   export: '<path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/>',
   import: '<path d="M12 20V9m0 0l-4.5 4.5M12 9l4.5 4.5M5 4h14"/>',
   trash: '<path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M6 15H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1"/>',
 };
 const setIcon = (name, size) =>
   `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor"
@@ -1441,22 +1442,25 @@ function syncCardHTML() {
         no servers, no account.</p>
       <div class="sync-btns">
         <button class="pill accent" data-act="sync-now">${setIcon('refresh', 13)} Sync now</button>
+        <button class="pill ghost" data-act="sync-code">${setIcon('copy', 13)} Copy setup code</button>
         <button class="pill ghost" data-act="sync-off">Disconnect</button>
       </div>
+      <p class="sync-fine">The setup code carries this device's token — paste it straight into
+        another device and clear your clipboard afterwards.</p>
     </div>`;
   }
   const step = (n, text) => `<li><i>${n}</i><span>${text}</span></li>`;
   return `<div class="set-card sync">
     <ol class="sync-steps">
-      ${step(1, 'Create a <b>classic</b> token on github.com with only the <b>gist</b> scope.')}
-      ${step(2, 'Paste it here — a <b>secret</b> gist is created to hold your history.')}
-      ${step(3, 'Repeat on your other devices with the <b>same token</b>.')}
+      ${step(1, 'Already synced elsewhere? <b>Copy setup code</b> there, paste it below, done.')}
+      ${step(2, 'Otherwise create a <b>classic</b> token on github.com with only the <b>gist</b> scope.')}
+      ${step(3, 'Paste it here — a <b>secret</b> gist is created to hold your history.')}
     </ol>
     <div class="sync-form">
-      <input id="syncToken" type="password" placeholder="ghp_… token" autocomplete="off" spellcheck="false">
+      <input id="syncToken" type="password" placeholder="Setup code or ghp_… token" autocomplete="off" spellcheck="false">
       <button class="pill accent" data-act="sync-connect">Connect</button>
     </div>
-    <p class="sync-fine">The token stays on this device and is only ever sent to api.github.com.</p>
+    <p class="sync-fine">Either one stays on this device and is only ever sent to api.github.com.</p>
   </div>`;
 }
 
@@ -1713,6 +1717,7 @@ view.addEventListener('click', e => {
   else if (actBtn.dataset.act === 'reset-weights') doResetWeights(actBtn);
   else if (actBtn.dataset.act === 'sync-connect') doSyncConnect(actBtn);
   else if (actBtn.dataset.act === 'sync-now') doSyncNow(actBtn);
+  else if (actBtn.dataset.act === 'sync-code') doCopySetupCode();
   else if (actBtn.dataset.act === 'sync-off') {
     if (confirm('Disconnect sync on this device? The gist and other devices keep their data.')) {
       sync.disconnect();
@@ -1721,6 +1726,34 @@ view.addEventListener('click', e => {
     }
   }
 });
+
+// The async clipboard needs a secure context, which the desktop shell's custom
+// scheme is not guaranteed to be, so fall back to the old selection trick. The
+// textarea has to be on screen to be selectable, hence off to the side rather
+// than hidden.
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch { /* fall through */ }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0';
+  document.body.append(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  ta.remove();
+  return ok;
+}
+
+async function doCopySetupCode() {
+  const code = sync.setupCode();
+  if (!code) { toast('Nothing to copy — this device is not connected'); return; }
+  if (await copyText(code)) toast('Setup code copied — paste it on the other device');
+  else toast('Could not reach the clipboard');
+}
 
 // Show progress in a button without losing the icon markup inside it; the
 // returned function puts the button back exactly as it was.
@@ -1922,7 +1955,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v91';
+const BUILD = 'v92';
 
 async function cachedVersion() {
 

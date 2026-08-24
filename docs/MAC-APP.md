@@ -126,7 +126,13 @@ message sends and their argument and return types.
 
 Everything else — the routine player, the timers, history, the gist sync — runs
 unchanged. Because the sync gist is shared, the Mac shows up in the device list
-in Settings as soon as it connects, using the same token as your other devices.
+in Settings as soon as it connects.
+
+Connecting it is a paste: on a device that already syncs, **Settings → Copy
+setup code**, then paste that into the token box here. The code carries the
+token and the gist id together, so nothing has to be looked up on GitHub — which
+matters, because a classic token is only ever displayed once. Treat the code as
+you would the token itself.
 
 ## "I rebuilt and nothing changed"
 

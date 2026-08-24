@@ -177,7 +177,7 @@ main { max-width: 1180px; margin: 0 auto; }
 /* The desktop window sits tighter to its own edges than a browser page does.
    One variable moves everything together — the header rows, the grid, and the
    window controls, which app.js places on the column edge this defines. */
-@media (min-width: 768px)  { :root.app-native { --edge: 23px; } }
+@media (min-width: 768px)  { :root.app-native { --edge: 19px; } }
 @media (min-width: 1200px) { .grid { grid-template-columns: repeat(5, 1fr); } }
 
 .group-head {

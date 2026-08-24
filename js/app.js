@@ -235,6 +235,31 @@ const barScroll = { main: 0, sub: {} };
 // you were on instead of resetting to "All groups".
 const groupMem = {};
 
+// Inset the active tab's underline to the letters themselves. A run of text is
+// as wide as its advance width, which includes a side bearing at each end, and
+// those differ per word — so a rule drawn across the whole box reads as sitting
+// off-centre under it. Canvas is the only thing that will tell us where the ink
+// actually starts and stops.
+let inkCtx = null;
+function fitUnderlines(scope) {
+  const chips = scope.querySelectorAll?.('.chip.on');
+  if (!chips?.length) return;
+  inkCtx ||= document.createElement('canvas').getContext('2d');
+  if (!inkCtx) return;
+  for (const chip of chips) {
+    const cs = getComputedStyle(chip);
+    inkCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const m = inkCtx.measureText(chip.textContent);
+    // Bounding-box distances are measured from the text origin, positive
+    // outwards, so the left one is negative once the ink starts after it.
+    const left = Math.max(0, -m.actualBoundingBoxLeft);
+    const right = Math.max(0, m.width - m.actualBoundingBoxRight);
+    if (!Number.isFinite(left) || !Number.isFinite(right)) continue;
+    chip.style.setProperty('--ink-l', `${left.toFixed(2)}px`);
+    chip.style.setProperty('--ink-r', `${right.toFixed(2)}px`);
+  }
+}
+
 function subchipsInner() {
   const defs = SUBGROUPS[state.cat];
   return defs
@@ -289,6 +314,7 @@ function renderExercises() {
   if (newMain) newMain.scrollLeft = barScroll.main;
   const newSub = view.querySelector('.chips.sub');
   if (newSub) newSub.scrollLeft = barScroll.sub[state.cat] || 0;
+  fitUnderlines(view);
   renderExercises.lastCat = state.cat;
 }
 
@@ -1896,7 +1922,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v87';
+const BUILD = 'v88';
 
 async function cachedVersion() {
 

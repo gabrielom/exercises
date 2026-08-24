@@ -126,7 +126,7 @@ main { max-width: 1180px; margin: 0 auto; }
    row. Every other row — group chips, section headings, the grid — begins at
    that edge, which is what puts the controls *on* the line the page reads down
    rather than off beside it. */
-:root.app-native { --titlebar: 30px; --win-controls: 70px; }
+:root.app-native { --titlebar: 30px; --win-controls: 72px; }
 /* The two header rows meet: the tabs row carries no bottom padding and the
    group row no top padding, so the only thing between them is each chip's own
    4px and its underline. Written as shorthands because a lone padding-top here
@@ -143,12 +143,23 @@ main { max-width: 1180px; margin: 0 auto; }
 .dragstrip { position: fixed; top: 0; left: 0; right: 0; height: var(--titlebar); z-index: 15; }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
-  flex: 0 0 auto;
+  position: relative; flex: 0 0 auto;
   font-size: 15px; color: var(--muted);
-  padding: 0 0 4px; border-bottom: 2px solid transparent; border-radius: 0;
-  transition: color .18s ease, border-color .18s ease;
+  padding: 0 0 6px; border-radius: 0;
+  transition: color .18s ease;
 }
-.chip.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--accent); }
+/* The rule is drawn to the letters, not to the text's advance width: that width
+   carries a side bearing at each end and they are not equal, so a rule spanning
+   the whole box sits visibly off-centre under the word — right of it here, since
+   most of these labels end on a straight-sided letter and start on a round one.
+   app.js measures the ink and sets the two insets; without it they fall back to
+   zero, which is simply the old full-width rule. */
+.chip.on { color: var(--ink); font-weight: 700; }
+.chip.on::after {
+  content: ""; position: absolute; bottom: 0; height: 2px;
+  left: var(--ink-l, 0px); right: var(--ink-r, 0px);
+  background: var(--accent);
+}
 .themebtn { color: var(--muted); padding: 4px; }
 .themebtn svg { width: 18px; height: 18px; display: block; }
 /* tab links carry 4px padding + 2px underline under their text, so their text

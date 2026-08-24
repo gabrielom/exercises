@@ -132,9 +132,10 @@ main { max-width: 1180px; margin: 0 auto; }
    4px and its underline. Written as shorthands because a lone padding-top here
    outranks `.chips.sub`'s own and would put the gap back. */
 :root.app-native .topbar .chips {
-  /* A little air above the tabs so the row does not start hard against the top
-     edge of the window. The controls are centred on this text, so they follow. */
-  padding: 6px var(--edge) 0 calc(var(--edge) + var(--win-controls));
+  /* Air above the tabs so the row does not start hard against the top edge of
+     the window. The controls hold their place while this grows: the page lifts
+     the centreline it reports by the same amount the line box overshoots. */
+  padding: 8px var(--edge) 0 calc(var(--edge) + var(--win-controls));
 }
 :root.app-native .topbar .chips.sub { padding: 0 var(--edge) 10px; }
 /* Stands in for the title bar you would otherwise drag the window by. Kept

@@ -61,6 +61,12 @@ const DRAG = NATIVE ? ' data-tauri-drag-region' : '';
 // them, so the text does not sit where the row's own padding would put it. Only
 // the Exercises screen has tabs, so the last good measurement carries over to
 // the screens that do not — the controls keep one position throughout.
+//
+// A line box reserves room under the baseline for descenders, which none of
+// these labels have, so its geometric centre sits below the middle of the
+// letters you actually see. Lifting the controls by that much lines them up with
+// the words rather than with the invisible box around them.
+const OPTICAL_LIFT = 2;
 let controlsY = 20;
 function placeControls() {
   if (!NATIVE) return;
@@ -71,7 +77,7 @@ function placeControls() {
   const tab = document.querySelector('.topbar .chips:not(.sub) .chip');
   if (tab) {
     const r = tab.getBoundingClientRect();
-    controlsY = Math.round(r.top + r.height / 2);
+    controlsY = Math.round(r.top + r.height / 2) - OPTICAL_LIFT;
   }
   invoke('place_window_controls', { x, y: controlsY }).catch(() => { /* older build, or not macOS */ });
 }
@@ -1890,7 +1896,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v86';
+const BUILD = 'v87';
 
 async function cachedVersion() {
 

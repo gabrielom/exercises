@@ -1108,6 +1108,7 @@ function renderHistory() {
   resetSwipe();
   const log = store.getLog();
   if (state.hView === 'gear') return renderGear();
+  codeShown = false;   // never leave the token on screen behind your back
   // Weight changes are a mode of this screen, not a screen of their own: the
   // tile toggles what the calendar counts and what the list below shows.
   const showWeights = state.hView === 'weights';
@@ -1429,9 +1430,15 @@ function deviceListHTML() {
     ${list.map(d => d.label).join(' · ')}</span>`;
 }
 
+// Whether the setup code is on screen. The clipboard is invisible, so showing
+// the string is the only way to see what you are about to paste — and the only
+// way to move it by hand when the two devices share no clipboard.
+let codeShown = false;
+
 function syncCardHTML() {
   const c = sync.cfg();
   if (c) {
+    const code = codeShown ? sync.setupCode() : null;
     return `<div class="set-card sync">
       <div class="sync-stat">
         <i class="dot" aria-hidden="true"></i>
@@ -1442,11 +1449,19 @@ function syncCardHTML() {
         no servers, no account.</p>
       <div class="sync-btns">
         <button class="pill accent" data-act="sync-now">${setIcon('refresh', 13)} Sync now</button>
-        <button class="pill ghost" data-act="sync-code">${setIcon('copy', 13)} Copy setup code</button>
+        <button class="pill ghost" data-act="sync-code" aria-expanded="${codeShown}">
+          ${setIcon('copy', 13)} ${codeShown ? 'Hide setup code' : 'Setup code'}</button>
         <button class="pill ghost" data-act="sync-off">Disconnect</button>
       </div>
-      <p class="sync-fine">The setup code carries this device's token — paste it straight into
-        another device and clear your clipboard afterwards.</p>
+      ${code ? `<div class="sync-code">
+        <p class="sync-fine">Paste this into the other device's box. Tap it to select the whole thing.</p>
+        <div class="code-out" id="setupCode">${code}</div>
+        <div class="sync-btns">
+          <button class="pill accent" data-act="sync-code-copy">${setIcon('copy', 13)} Copy</button>
+        </div>
+      </div>` : ''}
+      <p class="sync-fine">The setup code carries this device's token — treat it like the token
+        itself, and clear your clipboard once the other device is connected.</p>
     </div>`;
   }
   const step = (n, text) => `<li><i>${n}</i><span>${text}</span></li>`;
@@ -1717,7 +1732,12 @@ view.addEventListener('click', e => {
   else if (actBtn.dataset.act === 'reset-weights') doResetWeights(actBtn);
   else if (actBtn.dataset.act === 'sync-connect') doSyncConnect(actBtn);
   else if (actBtn.dataset.act === 'sync-now') doSyncNow(actBtn);
-  else if (actBtn.dataset.act === 'sync-code') doCopySetupCode();
+  else if (actBtn.dataset.act === 'sync-code') {
+    codeShown = !codeShown;
+    renderHistory();
+    if (codeShown) doCopySetupCode();   // reveal and copy in one press
+  }
+  else if (actBtn.dataset.act === 'sync-code-copy') doCopySetupCode();
   else if (actBtn.dataset.act === 'sync-off') {
     if (confirm('Disconnect sync on this device? The gist and other devices keep their data.')) {
       sync.disconnect();
@@ -1752,7 +1772,7 @@ async function doCopySetupCode() {
   const code = sync.setupCode();
   if (!code) { toast('Nothing to copy — this device is not connected'); return; }
   if (await copyText(code)) toast('Setup code copied — paste it on the other device');
-  else toast('Could not reach the clipboard');
+  else toast('Clipboard unavailable — select the code below and copy it');
 }
 
 // Show progress in a button without losing the icon markup inside it; the
@@ -1955,7 +1975,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v92';
+const BUILD = 'v93';
 
 async function cachedVersion() {
 

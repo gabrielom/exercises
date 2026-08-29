@@ -720,6 +720,17 @@ img[src^="img/gen/"] { border-radius: 18px; }
 .sync-steps span { font-size: 11.5px; color: var(--muted2); line-height: 1.5; }
 .sync-steps b { color: var(--ink); font-weight: 650; }
 .sync-fine { font-size: 10.5px; color: var(--muted); line-height: 1.45; }
+.sync-code { display: grid; gap: 8px; }
+/* A div rather than an input: one tap takes the whole string, and there is no
+   field for iOS to zoom into on focus — which it does below 16px regardless of
+   the viewport meta. break-all because it is one unbroken run of base64. */
+.code-out {
+  -webkit-user-select: all; user-select: all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px; line-height: 1.55; word-break: break-all;
+  color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line-strong); border-radius: 10px; padding: 9px 11px;
+}
 .sync-form { display: flex; gap: 8px; }
 .sync-form input {
   flex: 1; min-width: 0;

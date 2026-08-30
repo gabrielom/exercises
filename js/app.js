@@ -14,6 +14,13 @@ store.init();
 // page. Everything else is the same app.
 export const NATIVE = !!globalThis.__TAURI_INTERNALS__ || location.protocol === 'tauri:';
 
+// Whether the page was compiled into the app rather than fetched. These used to
+// be the same question — a desktop build served its own files — but the window
+// now loads the deployed site, so it is a Tauri app *and* an ordinary web page:
+// the window chrome below is still ours, while updates work the way they do on
+// the phone. Only a build that embeds its assets answers yes here.
+const EMBEDDED = location.protocol === 'tauri:';
+
 function invoke(cmd, args) {
   const fn = globalThis.__TAURI__?.core?.invoke || globalThis.__TAURI_INTERNALS__?.invoke;
   return fn ? fn(cmd, args) : Promise.reject(new Error('desktop bridge unavailable'));
@@ -1351,8 +1358,8 @@ function renderGear() {
     <h3 class="set-lab">About</h3>
     <div class="set-card">
       <div class="set-row static" id="verRow">
-        <span class="set-text"><b>Version <span class="tnum" id="appVer">…</span></b><small id="verSub">${NATIVE ? 'Desktop app · install a new build to update' : 'Checking…'}</small></span>
-        ${NATIVE ? '' : '<button class="ghostpill" data-act="update">Check</button>'}
+        <span class="set-text"><b>Version <span class="tnum" id="appVer">…</span></b><small id="verSub">${EMBEDDED ? 'Desktop app · install a new build to update' : 'Checking…'}</small></span>
+        ${EMBEDDED ? '' : '<button class="ghostpill" data-act="update">Check</button>'}
       </div>
     </div>
     <div class="verline diag" id="layoutDiag" hidden>${layoutReport()}</div>
@@ -1363,7 +1370,7 @@ function renderGear() {
     const el = document.getElementById('appVer');
     if (!el) return;
     el.textContent = v.label;
-    if (NATIVE) return;                 // nothing to check against, and the row already says so
+    if (EMBEDDED) return;               // nothing to check against, and the row already says so
     const sub = document.getElementById('verSub');
     const at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     if (v.stale) {
@@ -1916,9 +1923,11 @@ if (sync.connected()) sync.schedule(1500); // pull other devices' sets shortly a
 // a long time: check on launch and on every return to the foreground, bypassing
 // the HTTP cache, and reload as soon as the new worker is in charge.
 
-// None of this applies to the desktop app: the assets are already on disk, a
-// worker cannot register on its custom scheme, and there is no deploy to pick up.
-if ('serviceWorker' in navigator && !NATIVE) {
+// This needs a real origin: a worker cannot register on the custom scheme an
+// embedded desktop build serves from, and there would be no deploy to pick up
+// anyway. Over http(s) it runs — including in the desktop window, which is how
+// that build updates itself without being rebuilt.
+if ('serviceWorker' in navigator && !EMBEDDED) {
   const hadController = !!navigator.serviceWorker.controller;
   let reloading = false, pendingReload = false;
 
@@ -1975,7 +1984,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v93';
+const BUILD = 'v94';
 
 async function cachedVersion() {
 

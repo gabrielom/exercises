@@ -4,9 +4,7 @@
   "version": "0.1.0",
   "identifier": "io.github.gabrielom.exercises",
   "build": {
-    "frontendDist": "../dist",
-    "beforeDevCommand": "node tools/bundle.mjs",
-    "beforeBuildCommand": "node tools/bundle.mjs"
+    "frontendDist": "https://gabrielom.github.io/exercises/"
   },
   "app": {
     "withGlobalTauri": true,

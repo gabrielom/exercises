@@ -20,7 +20,7 @@ Node is already needed for `npm install`; any recent version works.
 ## Run it
 
 ```sh
-npm run dev      # opens the app with a live window, rebuilds dist/ first
+npm run dev      # opens the app in a live window
 npm run build    # produces a .app and a .dmg
 ```
 
@@ -57,8 +57,8 @@ window, and it adapts rather than failing quietly:
 
 | | Web | Mac app |
 | --- | --- | --- |
-| Assets | fetched, cached by the service worker | already on disk; no service worker at all |
-| Updates | a deploy reloads the app automatically | rebuild and reinstall — Settings says so |
+| Assets | fetched from the deployed site | the same, and cached the same way |
+| Updates | a deploy reloads the app automatically | the same — no rebuild for web changes |
 | Export | the browser downloads the blob | Rust writes it to `~/Downloads` and the toast names the file |
 | Title bar | — | none: the filter tabs sit beside the traffic lights |
 
@@ -67,7 +67,7 @@ window, and it adapts rather than failing quietly:
 The window uses `titleBarStyle: "Overlay"` with `hiddenTitle`, so the page runs
 the full height of the window and the traffic lights float over it — the same
 arrangement as the installed iPad app. **All · Gym · Stretching · Calisthenics**
-take the strip the title bar would have occupied, inset 78px so they start clear
+take the strip the title bar would have occupied, inset 72px so they start clear
 of the controls and centred on them. Screens with their own header (History,
 Routine, Settings) have no tabs row to inset, so they take 30px of vertical
 clearance instead and start below the controls.
@@ -92,10 +92,10 @@ there, and only the category tabs begin after them.
 
 | Window | Column edge | Controls | Tabs |
 | --- | --- | --- | --- |
-| 1100px | 32px | 32px | 102px |
-| 1280px | 82px | 82px | 152px |
-| 1440px | 162px | 162px | 232px |
-| 1600px | 242px | 242px | 312px |
+| 1100px | 19px | 19px | 91px |
+| 1280px | 69px | 69px | 141px |
+| 1440px | 149px | 149px | 221px |
+| 1600px | 229px | 229px | 301px |
 
 The page owns the layout, so it measures that edge and hands it to the
 `place_window_controls` command; `src/mac.rs` shifts the three buttons
@@ -134,37 +134,45 @@ token and the gist id together, so nothing has to be looked up on GitHub — whi
 matters, because a classic token is only ever displayed once. Treat the code as
 you would the token itself.
 
-## "I rebuilt and nothing changed"
+## Updates
 
-Check **Settings → About**. It shows the build the running app is made of, and
-that is the fastest way to tell a stale app from a stale layout.
+`frontendDist` is the deployed URL, not a directory, so **nothing is compiled
+into the app** — the window loads <https://gabrielom.github.io/exercises/> and
+the service worker takes over from there. Web changes therefore arrive on their
+own, exactly as they do on the iPhone and iPad: the worker picks up the new
+build and the app reloads itself. **Settings → About** shows what is running and
+offers a manual check.
 
-The web assets are embedded into the binary when the Rust crate compiles, and
-Tauri does not tell cargo to watch them: `tauri-build` emits `rerun-if-changed`
-for `tauri.conf.json`, `capabilities/` and resources, while `tauri-codegen` —
-which is what actually reads `dist/` — emits none at all. So a build after
-editing only HTML, CSS or JS used to find the crate "fresh", skip compiling and
-ship the assets baked into the *previous* binary. `build.rs` now walks `dist/`
-and watches every file, so any web change forces the rebuild.
+Rebuild only when the *native* side changes — `src-tauri/`, the window config,
+or the icons.
 
-If a build still looks stale, in order:
+Two consequences worth knowing:
 
-```sh
-open src-tauri/target/release/bundle/macos/Exercises.app   # not an older copy elsewhere
-touch src-tauri/src/lib.rs && npm run build                # force the crate to recompile
-```
+- **The first launch after installing needs a network.** There is nothing to
+  fall back to until the service worker has cached the app; after that it opens
+  offline like any installed PWA.
+- The window is a Tauri app *and* an ordinary web page. `app.js` keeps those
+  apart: `NATIVE` means the Tauri bridge is there, so the window chrome and the
+  native commands apply; `EMBEDDED` means the assets are local, which is now
+  false, so the service worker and the update machinery run.
+
+`tools/bundle.mjs` still assembles `dist/` from the file list in `sw.js`, but
+nothing in the build calls it any more. It is what you would reach for to go
+back to a self-contained app — set `frontendDist` to `../dist`, restore the
+`beforeBuildCommand`, and put the `dist/` watch back in `build.rs`, without
+which cargo finds the crate fresh and ships the *previous* binary's assets.
 
 ## Files
 
 | Path | What it is |
 | --- | --- |
 | `src-tauri/tauri.conf.json` | window size, bundle identifier, content-security policy |
-| `src-tauri/src/lib.rs` | the whole native side: one `save_backup` command |
+| `src-tauri/src/lib.rs` | the native side: `save_backup` and `place_window_controls` |
 | `src-tauri/icons/` | generated by `npm run icons` from `icons/icon-512.png` |
-| `tools/bundle.mjs` | assembles `dist/` from the file list in `sw.js` |
+| `tools/bundle.mjs` | assembles `dist/` — kept for a self-contained build, unused by this one |
 
-`dist/` is generated on every build and is not in git. The web app itself still
-has no build step — nothing in `src-tauri/` affects what GitHub Pages serves.
+The web app has no build step, and nothing in `src-tauri/` affects what GitHub
+Pages serves.
 
 ### Changing the icon
 

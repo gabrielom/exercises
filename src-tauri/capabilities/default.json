@@ -1,10 +1,17 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Core window permissions. save_backup is an app command, not a plugin one, so it needs no grant here.",
-  "windows": ["main"],
+  "description": "Core window permissions, granted to the app's own origin. save_backup and place_window_controls are app commands, not plugin ones, so they need no entry — but the remote list is what lets any of it be called from the deployed site.",
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging"
-  ]
+  ],
+  "remote": {
+    "urls": [
+      "https://gabrielom.github.io/*"
+    ]
+  }
 }

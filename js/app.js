@@ -1210,7 +1210,7 @@ function renderHistory() {
           : `<i class="none" title="${period} · no sets"></i>`;
       }).join('');
       return swipeRow(`ex:${d}:${r.exId}`, `<div class="x-row">
-        <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets}×${r.reps ? ` · ${r.reps} reps` : ''}${r.secs ? ` · ${fmtTime(r.secs)}` : ''}</small></span>
+        <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets} set${r.sets === 1 ? '' : 's'}${r.reps ? ` · ${r.reps} reps` : ''}${r.secs ? ` · ${fmtTime(r.secs)}` : ''}</small></span>
         <span class="x-bars">${bars}</span>
         <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}</span>
       </div>`);
@@ -1999,7 +1999,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v95';
+const BUILD = 'v96';
 
 async function cachedVersion() {
 

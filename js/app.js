@@ -984,7 +984,20 @@ function weightChanges(log, wlog = store.liveWeightLog()) {
 // Every week from the first day logged to this one, Monday-first, in rows of
 // seven bucketed into 4 heat levels. Five weeks minimum so a new log still
 // looks like a calendar; the grid scrolls when there is more.
-function heatWeeks(byDay, span = byDay) {
+// Where the heat map changes shade, counted in log rows per day.
+//
+// One tap records a whole prescription — three sets — so a day's row count is
+// three times the number of exercises it stands for. These cut points are the
+// exercise counts you would name: light up to three, mid up to seven, darkest
+// beyond. A routine série is one row per hold, about twenty, which lands mid.
+// (They used to be 3 and 8, from when a tap logged a single set, which is why
+// three exercises was already as dark as the map went.)
+const SESSION_STEPS = [11, 23];
+// Weight edits are single records rather than sets, so on that scale the map
+// would never leave its lightest shade. Its own, much shorter, ramp.
+const WEIGHT_STEPS = [1, 3];
+
+function heatWeeks(byDay, span = byDay, steps = SESSION_STEPS) {
   const today = new Date();
   const dow = (today.getDay() + 6) % 7;                      // 0 = Monday
   const end = new Date(today.getTime() + (6 - dow) * dayMs); // Sunday of this week
@@ -1002,7 +1015,8 @@ function heatWeeks(byDay, span = byDay) {
       const dt = new Date(end.getTime() - (w * 7 + i) * dayMs);
       const key = store.localDate(dt.getTime());
       const n = (byDay.get(key) || []).length;
-      cells.push({ key, n, future: dt > today, lvl: n === 0 ? 0 : n <= 3 ? 1 : n <= 8 ? 2 : 3 });
+      const lvl = n === 0 ? 0 : n <= steps[0] ? 1 : n <= steps[1] ? 2 : 3;
+      cells.push({ key, n, future: dt > today, lvl });
     }
     // Label a row with the month it opens, but only when that month changes,
     // so a long scroll stays readable without repeating itself.
@@ -1140,7 +1154,8 @@ function renderHistory() {
     changeDays.get(c.d).push(c);
   }
   // Same span either way, so the grid does not jump when the mode changes.
-  const weeks = heatWeeks(showWeights ? changeDays : byDay, byDay.size ? byDay : changeDays);
+  const weeks = heatWeeks(showWeights ? changeDays : byDay, byDay.size ? byDay : changeDays,
+    showWeights ? WEIGHT_STEPS : SESSION_STEPS);
 
   const tiles = `
     <div class="h-tiles">
@@ -1163,7 +1178,7 @@ function renderHistory() {
       <div class="heat-heads"><span></span>${['M','T','W','T','F','S','S'].map(x => `<span>${x}</span>`).join('')}</div>
       <div class="heat-scroll"><div class="heat-grid">${weeks.map(w => `
         <span class="heat-mon">${w.label}</span>
-        ${w.cells.map(c => `<i class="l${c.lvl}${c.future ? ' fut' : ''}" title="${c.key} · ${c.n} sets"></i>`).join('')}
+        ${w.cells.map(c => `<i class="l${c.lvl}${c.future ? ' fut' : ''}" title="${c.key} · ${c.n} ${showWeights ? (c.n === 1 ? 'change' : 'changes') : 'sets'}"></i>`).join('')}
       `).join('')}</div></div>
     </div>`;
 
@@ -1984,7 +1999,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v94';
+const BUILD = 'v95';
 
 async function cachedVersion() {
 

@@ -1053,10 +1053,13 @@ function dayDetail(log, d) {
   const entries = (byDayMap(log).get(d) || []);
   const perEx = new Map();
   for (const e of entries) {
-    if (!perEx.has(e.ex)) perEx.set(e.ex, { sets: 0, reps: 0, secs: 0, w: 0 });
+    if (!perEx.has(e.ex)) perEx.set(e.ex, { sets: 0, reps: 0, secs: 0, w: 0, repEach: [], secEach: [] });
     const a = perEx.get(e.ex);
     a.sets++;
-    if (e.mode === 'reps') a.reps += e.v; else a.secs += e.v;
+    // Totals and the individual sets both: the row wants what one set was, the
+    // volume below wants the sum.
+    if (e.mode === 'reps') { a.reps += e.v; a.repEach.push(e.v); }
+    else { a.secs += e.v; a.secEach.push(e.v); }
     if (e.w) a.w = Math.max(a.w, e.w);
   }
   const rows = [];
@@ -1071,6 +1074,15 @@ function dayDetail(log, d) {
     rows.push({ exId, ...a, bars, cur });
   }
   return { entries, rows };
+}
+
+// What one set was, for a row that has already said how many there were. Sets
+// that differ show their range — a total there would read as a per-set number
+// and be several times too big.
+function perSet(values, fmt = String) {
+  if (!values.length) return '';
+  const lo = Math.min(...values), hi = Math.max(...values);
+  return lo === hi ? fmt(lo) : `${fmt(lo)}–${fmt(hi)}`;
 }
 
 // Weight actually moved: reps × the weight on the bar. Timed holds carry no
@@ -1210,7 +1222,7 @@ function renderHistory() {
           : `<i class="none" title="${period} · no sets"></i>`;
       }).join('');
       return swipeRow(`ex:${d}:${r.exId}`, `<div class="x-row">
-        <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets} set${r.sets === 1 ? '' : 's'}${r.reps ? ` · ${r.reps} reps` : ''}${r.secs ? ` · ${fmtTime(r.secs)}` : ''}</small></span>
+        <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets} set${r.sets === 1 ? '' : 's'}${r.repEach.length ? ` · ${perSet(r.repEach)} reps` : ''}${r.secEach.length ? ` · ${perSet(r.secEach, fmtTime)}` : ''}</small></span>
         <span class="x-bars">${bars}</span>
         <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}</span>
       </div>`);
@@ -1999,7 +2011,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v96';
+const BUILD = 'v97';
 
 async function cachedVersion() {
 

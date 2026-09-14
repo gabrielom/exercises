@@ -407,6 +407,9 @@ function closePlayer() {
   playerEl().hidden = true;
   document.body.style.overflow = '';
   if (state.tab === 'exercises') { renderExercises(); restoreScroll(); } // refresh ✓ badges, keep place
+  // The player can also be reached from a History sheet, and a set logged in it
+  // belongs to the day still open behind.
+  else if (state.tab === 'history') renderHistory();
 }
 
 function renderPlayerDone() {
@@ -700,7 +703,9 @@ function closeViewer() {
 }
 
 addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !viewerEl().hidden) closeViewer();
+  if (e.key !== 'Escape') return;
+  if (!viewerEl().hidden) closeViewer();
+  else if (!document.getElementById('xsheet').hidden) closeXSheet();
 });
 
 // ————— no zooming the app itself —————
@@ -1047,20 +1052,35 @@ function yearBuckets(sessions, d) {
   return buckets;
 }
 
+// The same idea at the other end of the scale: the six months ending on `d`,
+// one bar per month. The row's inline bars have four pixels each and cover a
+// year; the sheet has room to spell the recent half out month by month.
+function monthBuckets(sessions, d) {
+  const m0 = monthIdx(d);
+  const buckets = Array.from({ length: 6 }, (_, i) => ({ m: m0 - (5 - i), s: null }));
+  for (const s of sessions) {
+    if (s.day > d) continue;
+    const back = m0 - monthIdx(s.day);
+    if (back >= 0 && back <= 5) buckets[5 - back].s = s;
+  }
+  return buckets;
+}
+
 // Per-exercise detail for one day: totals, a year of two-month weight bars and
 // how the current weight compares with the one before.
 function dayDetail(log, d) {
   const entries = (byDayMap(log).get(d) || []);
   const perEx = new Map();
   for (const e of entries) {
-    if (!perEx.has(e.ex)) perEx.set(e.ex, { sets: 0, reps: 0, secs: 0, w: 0, repEach: [], secEach: [] });
+    if (!perEx.has(e.ex)) perEx.set(e.ex, { sets: 0, reps: 0, secs: 0, w: 0, vol: 0, repEach: [], secEach: [], ts: [] });
     const a = perEx.get(e.ex);
     a.sets++;
     // Totals and the individual sets both: the row wants what one set was, the
     // volume below wants the sum.
-    if (e.mode === 'reps') { a.reps += e.v; a.repEach.push(e.v); }
+    if (e.mode === 'reps') { a.reps += e.v; a.repEach.push(e.v); a.vol += e.v * (e.w || 0); }
     else { a.secs += e.v; a.secEach.push(e.v); }
     if (e.w) a.w = Math.max(a.w, e.w);
+    a.ts.push(e.t);
   }
   const rows = [];
   for (const [exId, a] of perEx) {
@@ -1070,8 +1090,9 @@ function dayDetail(log, d) {
       .map(([day, es]) => ({ day, w: Math.max(0, ...es.map(e => e.w || 0)) }));
     const upTo = sessions.filter(s => s.day <= d);
     const bars = yearBuckets(upTo, d);
+    const months = monthBuckets(upTo, d);
     const cur = upTo.length ? upTo[upTo.length - 1].w : a.w;
-    rows.push({ exId, ...a, bars, cur });
+    rows.push({ exId, ...a, bars, months, cur });
   }
   return { entries, rows };
 }
@@ -1221,7 +1242,7 @@ function renderHistory() {
           ? `<i style="height:${Math.max(12, Math.round((b.s.w / max) * 100))}%" title="${period} · ${b.s.w} kg"></i>`
           : `<i class="none" title="${period} · no sets"></i>`;
       }).join('');
-      return swipeRow(`ex:${d}:${r.exId}`, `<div class="x-row">
+      return swipeRow(`ex:${d}:${r.exId}`, `<div class="x-row" data-x-open="${d}|${r.exId}" role="button" tabindex="0">
         <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets} set${r.sets === 1 ? '' : 's'}${r.repEach.length ? ` · ${perSet(r.repEach)} reps` : ''}${r.secEach.length ? ` · ${perSet(r.secEach, fmtTime)}` : ''}</small></span>
         <span class="x-bars">${bars}</span>
         <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}</span>
@@ -1620,6 +1641,144 @@ function deleteTarget(target) {
   });
 }
 
+// ————— history exercise sheet —————
+// Tapping an exercise row inside an expanded day opens that session as a sheet
+// over the list: the same numbers the row already carried, unpacked. Nothing
+// navigates — the day stays open behind it — so it is an overlay rather than a
+// screen, and it is 320px wide on a phone, an iPad and a Mac alike. There is
+// nothing in it a wider card would show more of.
+
+const sheetEl = () => document.getElementById('xsheet');
+let xsheet = null;   // { d, ex }
+
+const ICON_X = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
+
+// What the sheet calls this exercise under its name: the Portuguese name it is
+// known by at the gym, and what it works. A stretch or a calisthenic has no
+// muscle focus recorded, so it falls back to its category — unless the chip
+// above is already showing exactly that, which it is for calisthenics.
+function exSubtitle(ex, chipName) {
+  const focus = ex.cat === 'gym' ? GROUP_FOCUS[ex.group] : CATS[ex.cat];
+  return [ex.pt, focus].filter(x => x && x !== chipName).join(' · ');
+}
+
+const hhmm = t => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+// "Logged 30 · 30 · 30 reps at 40 kg — 9:12, 9:19, 9:26" — what the three sets
+// actually were, which the row above can only summarise as a range. Timestamps
+// inside one minute collapse: a prescription of three sets is logged by a
+// single tap and carries three stamps a millisecond apart.
+function loggedHTML(r) {
+  const bits = [];
+  if (r.repEach.length) bits.push(`<b>${r.repEach.join(' · ')}</b> reps`);
+  if (r.secEach.length) bits.push(`<b>${r.secEach.map(fmtTime).join(' · ')}</b>`);
+  if (r.w) bits.push(`at <b>${r.w} kg</b>`);
+  const times = [...new Set(r.ts.slice().sort((a, b) => a - b).map(hhmm))];
+  return `Logged ${bits.join(' ')}${times.length ? ` — ${times.join(', ')}` : ''}`;
+}
+
+// Weights cluster in a narrow band — a year might run 32.5 → 40 kg — so a bar
+// measured from zero would be six bars of the same height. The scale starts
+// under the lightest weight instead, which is what makes the climb visible.
+function barsHTML(months) {
+  const vals = months.filter(b => b.s?.w).map(b => b.s.w);
+  if (!vals.length) return '';
+  const hi = Math.max(...vals);
+  const lo = Math.min(...vals) * 0.8;
+  const newest = months.map(b => !!b.s?.w).lastIndexOf(true);
+  return `<div class="xs-bars">${months.map((b, i) => {
+    const w = b.s?.w || 0;
+    const h = w ? Math.max(14, Math.round(((w - lo) / Math.max(0.1, hi - lo)) * 100)) : 0;
+    return `<div class="xs-bar">
+      <span class="xs-val${i === newest ? ' now' : ''}">${w || ''}</span>
+      <span class="xs-track">${w ? `<i class="${i === newest ? 'now' : ''}" style="height:${h}%"></i>` : '<i class="none"></i>'}</span>
+      <span class="xs-m">${monthName(b.m)}</span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function openXSheet(d, exId) {
+  xsheet = { d, ex: exId };
+  sheetEl().hidden = false;
+  document.body.style.overflow = 'hidden';
+  renderXSheet();
+}
+
+function closeXSheet() {
+  xsheet = null;
+  sheetEl().hidden = true;
+  sheetEl().innerHTML = '';
+  document.body.style.overflow = '';
+}
+
+function renderXSheet() {
+  if (!xsheet) return;
+  const { d, ex: exId } = xsheet;
+  const ex = byId[exId];
+  const r = dayDetail(store.getLog(), d).rows.find(x => x.exId === exId);
+  if (!ex || !r) return closeXSheet();   // the sets were deleted underneath it
+
+  const stats = [[`${r.sets}×`, 'sets']];
+  if (r.repEach.length) stats.push([r.reps, 'reps']);
+  else stats.push([fmtTime(r.secs), 'time']);
+  if (r.vol) stats.push([r.vol.toLocaleString(), 'kg total']);
+
+  const chipName = groupOf(exId) || CATS[ex.cat];
+  const sub = exSubtitle(ex, chipName);
+
+  sheetEl().innerHTML = `<div class="xs-card" role="dialog" aria-modal="true" aria-label="${ex.name}">
+    <div class="xs-fig">
+      <span class="xs-chip">${chipName} · ${agoDay(d)}</span>
+      <button class="xs-x" data-x="close" aria-label="Close">${ICON_X}</button>
+      <img src="${imgFor(exId)}" alt="">
+    </div>
+    <div class="xs-body">
+      <div>
+        <div class="xs-name">${ex.name}</div>
+        ${sub ? `<div class="xs-sub">${sub}</div>` : ''}
+      </div>
+      <div class="xs-stats">${stats.map(([v, k]) =>
+        `<span><b>${v}</b><small>${k}</small></span>`).join('')}</div>
+      <p class="xs-logged">${loggedHTML(r)}</p>
+      ${barsHTML(r.months)}
+      <div class="xs-act">
+        <button class="xs-open" data-x="open">Open exercise ${ICON_CHEV}</button>
+        <button class="xs-del" data-x="del" aria-label="Delete this session's sets">${ICON_TRASH}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// The row is a div — it has to be, swipe-to-delete wraps it — so the keyboard
+// affordance its role promises is wired by hand.
+view.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const row = e.target.closest?.('.x-row[data-x-open]');
+  if (!row) return;
+  e.preventDefault();
+  const [d, exId] = row.dataset.xOpen.split('|');
+  openXSheet(d, exId);
+});
+
+sheetEl().addEventListener('click', e => {
+  if (e.target === e.currentTarget) return closeXSheet();   // the backdrop
+  const btn = e.target.closest('[data-x]');
+  if (!btn || !xsheet) return;
+  const { d, ex: exId } = xsheet;
+  if (btn.dataset.x === 'close') closeXSheet();
+  else if (btn.dataset.x === 'open') {
+    // Straight into the player for a fresh set, on the série this exercise
+    // belongs to so you can carry on through it rather than stopping at one.
+    const ex = byId[exId];
+    const list = EXERCISES
+      .filter(x => x.cat === ex.cat && x.group === ex.group)
+      .map(x => x.id);
+    closeXSheet();
+    openPlayer(list, list.indexOf(exId));
+  }
+  else if (btn.dataset.x === 'del') { closeXSheet(); deleteTarget(`ex:${d}:${exId}`); }
+});
+
 // ————— render root —————
 
 function markTab() {
@@ -1745,6 +1904,16 @@ view.addEventListener('click', e => {
   // history: delete a swiped-open row
   const del = e.target.closest('.swipe-del[data-del]');
   if (del) { deleteTarget(del.dataset.del); return; }
+
+  // history: open an exercise row as a sheet over the list. The whole row is
+  // the target; a horizontal drag has already been claimed by swipe-to-delete
+  // and swallowed the trailing click before it reaches here.
+  const xRow = e.target.closest('.x-row[data-x-open]');
+  if (xRow) {
+    const [d, exId] = xRow.dataset.xOpen.split('|');
+    openXSheet(d, exId);
+    return;
+  }
 
   // history: expand/collapse a day (single open at a time)
   const dayRow = e.target.closest('[data-day]');

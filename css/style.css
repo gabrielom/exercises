@@ -578,7 +578,9 @@ img[src^="img/gen/"] { border-radius: 18px; }
   color: var(--muted); background: var(--day-body);
 }
 .swipe + .x-head { border-top: 1px solid var(--track); }
+/* A button, not a div: the whole row opens the exercise sheet. */
 .x-row {
+  width: 100%; text-align: left;
   display: flex; align-items: center; gap: 10px;
   background: var(--day-body); padding: 9px 13px; border-top: 1px solid var(--day-line);
 }
@@ -619,6 +621,77 @@ img[src^="img/gen/"] { border-radius: 18px; }
 }
 .d-open .swipe-body, .x-row { background: var(--day-body); }
 .swipe.open .swipe-body { transform: translateX(76px); }
+
+/* ————— history: the exercise sheet —————
+   One session of one exercise, lifted over the list. 320px on every device —
+   it is a card, not a screen, so it does not grow with the window. */
+.sheet-wrap[hidden] { display: none; }
+.sheet-wrap {
+  position: fixed; inset: 0; z-index: 80;
+  background: rgba(24, 25, 20, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; overflow: auto; overscroll-behavior: contain;
+}
+.sh-card {
+  width: 320px; max-width: 100%;
+  background: var(--card); border: 1px solid var(--line); border-radius: 24px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+}
+.sh-fig { position: relative; background: var(--panel); padding: 10px 0 6px; display: grid; place-items: center; }
+.sh-fig img { width: 190px; aspect-ratio: 120 / 100; object-fit: contain; display: block; }
+.sh-chip {
+  position: absolute; top: 10px; left: 12px;
+  font-size: 10.5px; font-weight: 600;
+  color: var(--accent-dark); background: var(--accent-soft);
+  border-radius: 999px; padding: 2px 9px;
+}
+.sh-close {
+  position: absolute; top: 8px; right: 10px;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--card); border: 1px solid var(--line); color: var(--muted2);
+}
+.sh-close svg { width: 15px; height: 15px; }
+.sh-body { padding: 13px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.sh-name { font-size: 19px; font-weight: 650; letter-spacing: -0.01em; }
+.sh-subname { font-size: 11.5px; color: var(--muted2); margin-top: 1px; }
+.sh-stats {
+  display: flex;
+  border-top: 1px solid var(--track); border-bottom: 1px solid var(--track);
+  padding: 10px 0;
+}
+.sh-stats span { flex: 1; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.sh-stats b { font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.sh-stats small {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted);
+}
+.sh-sets { font-size: 11px; color: var(--muted2); font-variant-numeric: tabular-nums; }
+.sh-sets b { color: var(--ink); font-weight: 600; }
+/* The same six two-month buckets as the row's inline bars, read large. */
+.sh-bars { display: flex; align-items: flex-end; gap: 6px; }
+.sh-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.sh-val { font-size: 9.5px; color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.sh-track { width: 100%; max-width: 26px; height: 92px; display: flex; align-items: flex-end; }
+.sh-track i { width: 100%; border-radius: 4px 4px 2px 2px; background: var(--heat2); display: block; }
+.sh-track i.none { height: 3px; background: var(--track); }
+.sh-mon { font-size: 9px; color: var(--muted); }
+.sh-col.now .sh-val { color: var(--accent-dark); font-weight: 700; }
+.sh-col.now .sh-track i { background: var(--accent); }
+.sh-acts { display: flex; align-items: center; gap: 8px; }
+.sh-open {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--accent); color: #f7f8f2;
+  border-radius: 12px; padding: 11px; font-size: 13.5px; font-weight: 650;
+}
+.sh-open svg { width: 13px; height: 13px; }
+.sh-bin {
+  flex: 0 0 auto; display: grid; place-items: center;
+  width: 42px; height: 42px; border-radius: 12px;
+  border: 1.5px solid var(--line-strong); color: var(--danger);
+}
+.sh-bin svg { width: 16px; height: 16px; }
 
 /* weight-changes screen */
 .w-row { display: flex; align-items: center; gap: 10px; padding: 10px 13px; }

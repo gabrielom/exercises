@@ -407,6 +407,8 @@ function closePlayer() {
   playerEl().hidden = true;
   document.body.style.overflow = '';
   if (state.tab === 'exercises') { renderExercises(); restoreScroll(); } // refresh ✓ badges, keep place
+  // Opened from the History sheet: the set just logged belongs on the list behind.
+  else if (state.tab === 'history') { renderHistory(); restoreScroll(); }
 }
 
 function renderPlayerDone() {
@@ -700,7 +702,9 @@ function closeViewer() {
 }
 
 addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !viewerEl().hidden) closeViewer();
+  if (e.key !== 'Escape') return;
+  if (!viewerEl().hidden) closeViewer();
+  else closeSheet();
 });
 
 // ————— no zooming the app itself —————
@@ -1053,14 +1057,15 @@ function dayDetail(log, d) {
   const entries = (byDayMap(log).get(d) || []);
   const perEx = new Map();
   for (const e of entries) {
-    if (!perEx.has(e.ex)) perEx.set(e.ex, { sets: 0, reps: 0, secs: 0, w: 0, repEach: [], secEach: [] });
+    if (!perEx.has(e.ex)) perEx.set(e.ex, { sets: 0, reps: 0, secs: 0, w: 0, vol: 0, repEach: [], secEach: [], wEach: [], times: [] });
     const a = perEx.get(e.ex);
     a.sets++;
     // Totals and the individual sets both: the row wants what one set was, the
-    // volume below wants the sum.
-    if (e.mode === 'reps') { a.reps += e.v; a.repEach.push(e.v); }
+    // volume below wants the sum, and the sheet lists them one by one.
+    if (e.mode === 'reps') { a.reps += e.v; a.repEach.push(e.v); a.vol += e.v * (e.w || 0); }
     else { a.secs += e.v; a.secEach.push(e.v); }
-    if (e.w) a.w = Math.max(a.w, e.w);
+    if (e.w) { a.w = Math.max(a.w, e.w); a.wEach.push(e.w); }
+    a.times.push(e.t);
   }
   const rows = [];
   for (const [exId, a] of perEx) {
@@ -1221,11 +1226,13 @@ function renderHistory() {
           ? `<i style="height:${Math.max(12, Math.round((b.s.w / max) * 100))}%" title="${period} · ${b.s.w} kg"></i>`
           : `<i class="none" title="${period} · no sets"></i>`;
       }).join('');
-      return swipeRow(`ex:${d}:${r.exId}`, `<div class="x-row">
+      // The whole row opens the sheet; the swipe gesture still wins on a
+      // horizontal drag, because the click it leaves behind is swallowed.
+      return swipeRow(`ex:${d}:${r.exId}`, `<button class="x-row" data-xrow="${d}|${r.exId}">
         <span class="x-main"><b>${byId[r.exId]?.name || r.exId}</b><small>${r.sets} set${r.sets === 1 ? '' : 's'}${r.repEach.length ? ` · ${perSet(r.repEach)} reps` : ''}${r.secEach.length ? ` · ${perSet(r.secEach, fmtTime)}` : ''}</small></span>
         <span class="x-bars">${bars}</span>
         <span class="x-w">${r.cur ? `<b>${r.cur} kg</b>` : ''}</span>
-      </div>`);
+      </button>`);
     };
 
     // Split the day by what each exercise belongs to, in the order it was
@@ -1620,6 +1627,135 @@ function deleteTarget(target) {
   });
 }
 
+// ————— history: the exercise sheet —————
+// Tapping a row inside an open day lifts that session out as a card: what was
+// logged, when, and where the weight has gone over the past year. The day stays
+// expanded behind it — this is a detail on top of the list, not a screen of its
+// own, so there is no route and nothing to come back to.
+
+const sheetEl = () => document.getElementById('sheet');
+let sheetFor = null;                     // { d, exId } while open
+
+// Built by hand rather than left to toLocaleTimeString: three "9:12 AM"s wrap
+// the line onto a third row, and the sheet only ever shows today's own clock.
+const clockOf = t => { const x = new Date(t); return `${x.getHours()}:${String(x.getMinutes()).padStart(2, '0')}`; };
+
+const ICON_CLOSE_S = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
+
+// The sub-line under the name: the Portuguese name it is known by at the gym,
+// then what it works. Stretches carry neither, so they fall back to their block.
+function sheetSub(exId) {
+  const ex = byId[exId];
+  if (!ex) return '';
+  const focus = ex.cat === 'gym' ? GROUP_FOCUS[ex.group] : groupOf(exId);
+  return [ex.pt, focus].filter(Boolean).join(' · ');
+}
+
+// "Logged 30 · 30 · 30 reps at 40 kg — 9:12, 9:19, 9:26". Sets logged in one
+// tap share a timestamp, so identical clock readings collapse to one.
+function setsLine(r) {
+  const each = r.repEach.length ? r.repEach.map(String) : r.secEach.map(fmtTime);
+  if (!each.length) return '';
+  const unit = r.repEach.length ? ' reps' : '';
+  const kg = r.wEach.length ? ` at <b>${perSet(r.wEach)} kg</b>` : '';
+  const clocks = [...new Set(r.times.map(clockOf))].join(', ');
+  return `<p class="sh-sets">Logged <b>${each.join(' · ')}</b>${unit}${kg}${clocks ? ` — ${clocks}` : ''}</p>`;
+}
+
+// The same six two-month buckets the row's inline bars use, drawn large enough
+// to read: the weight above each bar and the month it ended in below.
+function sheetBars(bars) {
+  const seen = bars.map(b => b.s?.w || 0).filter(Boolean);
+  if (!seen.length) return '';
+  const max = Math.max(...seen), min = Math.min(...seen);
+  // Scaled between the lightest and heaviest the year saw, not from zero: a
+  // year that went 32.5 → 40 kg is a climb, and from a zero baseline all six
+  // bars are within a fifth of each other and it reads as flat. The floor keeps
+  // the lightest bar a bar rather than a sliver.
+  const height = w => (max === min ? 100 : Math.round(45 + 55 * ((w - min) / (max - min))));
+  // The most recent bucket that carries a weight is "now" — it gets the full
+  // accent, the older ones the muted sage.
+  const last = bars.map((b, i) => (b.s?.w ? i : -1)).filter(i => i >= 0).slice(-1)[0];
+  return `<div class="sh-bars">${bars.map((b, i) => {
+    const w = b.s?.w || 0;
+    const period = `${monthName(b.from)}–${monthName(b.to)}`;
+    return `<div class="sh-col${i === last ? ' now' : ''}" title="${period}${w ? ` · ${w} kg` : ' · no sets'}">
+      <span class="sh-val">${w || '·'}</span>
+      <span class="sh-track">${w ? `<i style="height:${height(w)}%"></i>` : '<i class="none"></i>'}</span>
+      <span class="sh-mon">${monthName(b.to)}</span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function sheetStats(r) {
+  const stats = [[`${r.sets}×`, 'sets']];
+  if (r.repEach.length) stats.push([String(r.reps), 'reps']);
+  else if (r.secEach.length) stats.push([fmtTime(r.secs), 'time']);
+  if (r.vol) stats.push([r.vol.toLocaleString(), 'kg total']);
+  else if (r.cur) stats.push([String(r.cur), 'kg']);
+  return `<div class="sh-stats">${stats.map(([v, l]) =>
+    `<span><b>${v}</b><small>${l}</small></span>`).join('')}</div>`;
+}
+
+function renderSheet() {
+  if (!sheetFor) return;
+  const { d, exId } = sheetFor;
+  const r = dayDetail(store.getLog(), d).rows.find(x => x.exId === exId);
+  if (!r) return closeSheet();          // its last set was deleted underneath us
+  const ex = byId[exId];
+  const group = groupOf(exId);
+  sheetEl().innerHTML = `<div class="sh-card" role="dialog" aria-modal="true" aria-label="${ex?.name || exId}">
+    <div class="sh-fig">
+      <span class="sh-chip">${[group, agoDay(d)].filter(Boolean).join(' · ')}</span>
+      <button class="sh-close" data-sh="close" aria-label="Close">${ICON_CLOSE_S}</button>
+      <img src="${imgFor(exId)}" alt="">
+    </div>
+    <div class="sh-body">
+      <div>
+        <div class="sh-name">${ex?.name || exId}</div>
+        <div class="sh-subname">${sheetSub(exId)}</div>
+      </div>
+      ${sheetStats(r)}
+      ${setsLine(r)}
+      ${sheetBars(r.bars)}
+      <div class="sh-acts">
+        <button class="sh-open" data-sh="open">Open exercise ${ICON_CHEV}</button>
+        <button class="sh-bin" data-sh="del" aria-label="Delete these sets">${ICON_TRASH}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openSheet(d, exId) {
+  sheetFor = { d, exId };
+  sheetEl().hidden = false;
+  document.body.style.overflow = 'hidden';
+  renderSheet();
+}
+
+function closeSheet() {
+  if (!sheetFor) return;
+  sheetFor = null;
+  sheetEl().hidden = true;
+  sheetEl().innerHTML = '';
+  if (!player.open && viewerEl().hidden) document.body.style.overflow = '';
+}
+
+sheetEl().addEventListener('click', e => {
+  const btn = e.target.closest('[data-sh]');
+  if (!btn) { if (!e.target.closest('.sh-card')) closeSheet(); return; }  // backdrop
+  const act = btn.dataset.sh;
+  const { d, exId } = sheetFor || {};
+  if (act === 'close') return closeSheet();
+  if (act === 'open') {
+    closeSheet();
+    const list = dayDetail(store.getLog(), d).rows.map(x => x.exId);
+    openPlayer(list, Math.max(0, list.indexOf(exId)));
+    return;
+  }
+  if (act === 'del') { closeSheet(); deleteTarget(`ex:${d}:${exId}`); }
+});
+
 // ————— render root —————
 
 function markTab() {
@@ -1745,6 +1881,10 @@ view.addEventListener('click', e => {
   // history: delete a swiped-open row
   const del = e.target.closest('.swipe-del[data-del]');
   if (del) { deleteTarget(del.dataset.del); return; }
+
+  // history: lift one exercise of an open day out as a sheet
+  const xRow = e.target.closest('[data-xrow]');
+  if (xRow) { openSheet(...xRow.dataset.xrow.split('|')); return; }
 
   // history: expand/collapse a day (single open at a time)
   const dayRow = e.target.closest('[data-day]');
@@ -2011,7 +2151,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v97';
+const BUILD = 'v98';
 
 async function cachedVersion() {
 

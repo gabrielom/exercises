@@ -1,5 +1,5 @@
 // Cache-first app-shell service worker. Bump VERSION on every deploy.
-const VERSION = "exercises-v98";
+const VERSION = "exercises-v99";
 const SHELL = [
   "./",
   "index.html",
@@ -139,8 +139,21 @@ const SHELL = [
   "img/gen/wide-push-up.webp",
 ];
 
+// `cache: "reload"` is the whole point of this handler. A plain addAll fetches
+// through the HTTP cache, and GitHub Pages serves everything with
+// max-age=600 — so a device that loaded the site less than ten minutes before
+// a deploy filled the NEW version's cache with the OLD version's files. The
+// cache was then named for a build it did not contain, cache-first served that
+// stale code forever, and the page reloaded at every launch trying to reach a
+// version that was never actually downloaded. Always go to the network here.
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(VERSION)
+      // addAll is all-or-nothing: if any file fails, the install fails and the
+      // old worker stays in charge, rather than a half-filled cache taking over.
+      .then(c => c.addAll(SHELL.map(u => new Request(u, { cache: "reload" }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", e => {

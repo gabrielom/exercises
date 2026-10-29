@@ -2121,16 +2121,29 @@ if ('serviceWorker' in navigator && !EMBEDDED) {
 
   // A downloaded build that never took over is how the app ends up showing old
   // code while the update sits there waiting to be pressed. Whenever the cache
-  // holds a different build from the one running, reload onto it. Capped per
-  // session so a build that somehow cannot take over cannot spin.
-  const RELOAD_KEY = 'exercises.autoreloads';
+  // holds a newer build than the one running, reload onto it.
+  //
+  // Once, though, and only forwards. The cap used to be two reloads per
+  // session, which assumed a reload always either works or is harmless — but a
+  // cache whose name does not match the files inside it (see sw.js) never
+  // matches, so the app threw the screen away twice at every launch, forever,
+  // and still came back on the old build. If a reload did not change which
+  // build is running, reloading again will not either: remember the version we
+  // tried, and let the Settings screen report the mismatch instead.
+  const TRIED_KEY = 'exercises.reloadedFor';
+  const verNum = v => Number((String(v).match(/v(\d+)/) || [])[1] || 0);
+  const tried = {
+    get: () => { try { return localStorage.getItem(TRIED_KEY); } catch { return null; } },
+    set: v => { try { localStorage.setItem(TRIED_KEY, v); } catch { /* private mode */ } },
+    clear: () => { try { localStorage.removeItem(TRIED_KEY); } catch { /* private mode */ } },
+  };
   async function reloadIfStale() {
     if (player.open || reloading) return;
     const cached = shortVer(await cachedVersion());
-    if (!cached || cached === BUILD) return;
-    const n = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
-    if (n >= 2) return;
-    sessionStorage.setItem(RELOAD_KEY, String(n + 1));
+    if (!cached || cached === BUILD) { tried.clear(); return; }  // settled: forget the attempt
+    if (verNum(cached) <= verNum(BUILD)) return;                 // never reload backwards
+    if (tried.get() === cached) return;                          // already tried; it did not take
+    tried.set(cached);
     applyUpdate();
   }
   addEventListener('pageshow', reloadIfStale);
@@ -2151,7 +2164,7 @@ const shortVer = v => (v || '').replace('exercises-', '');
 // on running the code it started with — so the screen claimed a version it was
 // not executing. A constant compiled into the running script cannot lie.
 // Bump it with sw.js on every deploy.
-const BUILD = 'v98';
+const BUILD = 'v99';
 
 async function cachedVersion() {
 
